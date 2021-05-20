@@ -1,0 +1,163 @@
+import os
+import copy
+import commentjson as json
+import shutil
+import pickle
+import logging
+import configparser
+import numpy as np
+#import open3d as o3d
+from easydict import EasyDict
+
+import torch
+import torchvision
+import torch.nn as nn
+import torchvision.models as models
+
+import data
+import metrics
+import utils
+
+from methods import oflow, resflow, interpolate
+
+method_dict = {
+    'oflow': oflow,
+    'resflow':resflow,
+    'interpolate':interpolate
+    }
+optimizer_dict = {
+    'SGD': torch.optim.SGD,
+    'Adam': torch.optim.Adam,
+    'LBFGS':torch.optim.LBFGS,
+    }
+scheduler_dict = {
+    "ExponentialLR": torch.optim.lr_scheduler.ExponentialLR,
+    "MultiStepLR": torch.optim.lr_scheduler.MultiStepLR,
+    "StepLR": torch.optim.lr_scheduler.StepLR,
+    }
+
+# ********************** DATA **********************
+
+
+def get_dataloaders(
+    cfg,
+    mano_root='misc/mano_v1_2/models',
+    shuffle=False,
+    training=False,
+    do_augment=False,
+    ):
+
+  dataloader = data.get_dataloaders(
+      cfg,
+      mano_root=mano_root,
+      shuffle=shuffle,
+      training=training,
+      do_augment=do_augment,
+      )
+  return dataloader
+
+
+# ********************** TRAINER **********************
+
+
+def get_trainer(
+    cfg,
+    model,
+    optimizer,
+    scheduler,
+    metrics_fns,
+    device,
+    exp_dir,
+    **kwargs
+    ):
+  method_name = cfg.name
+  if method_name in method_dict:
+    return method_dict[method_name].get_trainer(
+        cfg[method_name],
+        model,
+        optimizer,
+        scheduler,
+        metrics_fns,
+        device,
+        exp_dir,
+        **kwargs,
+        )
+  else:
+    raise NotImplementedError(f"model name {method} is not yet defined.")
+
+
+# ********************** MODEL **********************
+
+
+def get_model(
+    cfg,
+    device,
+    **kwargs
+    ):
+  method_name = cfg.name
+  if method_name in method_dict:
+    return method_dict[method_name].get_model(
+        cfg[method_name],
+        device,
+        **kwargs,
+        )
+  else:
+    raise NotImplementedError(f"model name {method} is not yet defined.")
+
+
+# ********************** OPTIMIZER **********************
+
+
+def get_optimizer(
+    opt_name,
+    opt_kwargs,
+    lr,
+    parameters,
+    ):
+  """Creates an optimizer based on the opt_config and model parameters.
+  Args:
+    - opt_name (str):
+    - opt_kwargs: (EasyDict) optimizer config. It should have corresponding fields.
+    - lr (float): learning rate
+    - parameters (nn.params): trainable parameters.
+  Returns:
+    - optimizer object
+  """
+  if opt_name in optimizer_dict:
+    return optimizer_dict[opt_name](
+        parameters,
+        lr=lr,
+        **opt_kwargs,
+        )
+  else:
+    raise NotImplementedError("Optimizer {} is not defined".format(opt_name))
+
+
+def get_scheduler(
+    sch_name,
+    sch_kwargs,
+    optimizer,
+    ):
+  """ Creates a learning-rate scheduler
+  Args:
+    - sch_name (str):   scheduler name. ("StepLR"|"MultiStepLR"|"ExponentialLR").
+    - sch_kwargs (EasyDict): schedular specific parameters.
+    - optimizer (torch.optim)
+  Returns:
+    - scheduler object
+  """
+  if sch_name in scheduler_dict:
+    return scheduler_dict[sch_name](
+        optimizer,
+        **sch_kwargs,
+        )
+  else:
+    return None
+
+
+# ********************** METRICS **********************
+
+def get_metrics_fns(cfg, **kwargs):
+  return metrics.get_metrics_fns(cfg.names)
+
+
