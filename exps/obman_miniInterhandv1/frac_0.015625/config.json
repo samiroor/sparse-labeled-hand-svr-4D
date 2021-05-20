@@ -1,0 +1,29 @@
+{ 
+  "inherit_from":"exps/obman_miniInterhandv1/frac_1.0/config.json ",
+  "training":{
+    "dataloader":{
+      "batch_size":64,
+      "workers": 8,
+      "datasets":{
+        "supervised_singlehand_img":{
+          "data":{
+            "supervise_fraction":0.015625
+          }
+        }
+      } 
+    }
+  },
+  "evaluating":{
+    "dataloader":{
+      "batch_size":64,
+      "workers": 8,
+      "datasets":{
+        "supervised_singlehand_img":{
+          "data":{
+            "supervise_fraction":1.0
+          }
+        }
+      } 
+    }
+  }
+}
