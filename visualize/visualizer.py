@@ -13,7 +13,31 @@ from . import fastrender
 from . import visutils
 
 
-links_colors = np.array([
+links  = [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [0, 5],
+    [5, 6],
+    [6, 7],
+    [7, 8],
+    [0, 9],
+    [9, 10],
+    [10, 11],
+    [11, 12],
+    [0, 13],
+    [13, 14],
+    [14, 15],
+    [15, 16],
+    [0, 17],
+    [17, 18],
+    [18, 19],
+    [19, 20]
+    ]
+
+
+links_colors = [
   [0.4, 0.4, 0.4],
   [0.4, 0.0, 0.0],
   [0.6, 0.0, 0.0],
@@ -35,7 +59,7 @@ links_colors = np.array([
   [0.6, 0.0, 0.6],
   [0.7, 0.0, 0.8],
   [1.0, 0.0, 1.0]
-  ])
+  ]
 
 
 # skeleton 2D (numpy)
@@ -43,7 +67,6 @@ def skeleton2D(
     axis,
     coords2D,
     visibility=None,
-    links=None,
     color=None,
     linewidth='1',
     draw_kp=True,
@@ -78,7 +101,6 @@ def skeleton2D(
 
   if title is not None:
     axis.set_title('{}'.format(title))
-  #axis.axis('equal')
   axis.set_xticklabels([])
   axis.set_yticklabels([])
   axis.axis("off")
@@ -89,7 +111,6 @@ def skeleton3D(
     axis,
     coords3D,
     visibility=None,
-    links=None,
     color=None,
     linewidth='3',
     draw_kp=True,
@@ -153,10 +174,34 @@ def mesh(
   mesh.set_edgecolor(edge_color)
   mesh.set_facecolor(face_color)
   axis.add_collection3d(mesh)
-  self.cam_3d(axis, verts, flip_x=flip_x)
+  cam_3d(axis, verts, flip_x=flip_x)
 
   if title is not None:
     axis.set_title('{}'.format(title))
+
+
+def cam_3d(
+    axis,
+    verts,
+    flip_x=False):
+    """
+    Centers view on cuboid containing hand and flips y and z axis
+    and fixes azimuth
+    """
+    extents = np.stack([verts.min(0), verts.max(0)], axis=1)
+    sz = extents[:, 1] - extents[:, 0]
+    centers = np.mean(extents, axis=1)
+    maxsize = max(abs(sz))
+
+    r = maxsize / 2
+    if flip_x:
+        axis.set_xlim(centers[0] + r, centers[0] - r)
+    else:
+        axis.set_xlim(centers[0] - r, centers[0] + r)
+
+    # Invert y and z axis
+    axis.set_ylim(centers[1] + r, centers[1] - r)
+    axis.set_zlim(centers[2] + r, centers[2] - r)
 
 
 # fast renderer in cuda (torch)
@@ -165,18 +210,22 @@ def render(
     verts_prd=None,
     faces=None,
     images=None,#b,c,H,W
-    camintrs=None,
+    camsintr=None,
     colors_prd=None,
     colors_gt=None,
     is_hand=True,
     ):
 
-  input_res = (images.shape[3], images.shape[2])
+  input_res = (images.shape[3], images.shape[2]) if images is not None else (256,256)
 
-  if colors_gt is None:
-    colors_gt = visutils.get_verts_colors(verts_gt, [0.650, 0.740, 0.850])
-  if colors_prd is None:
-    colors_prd = err_cmap_colors(verts_prd, verts_gt)
+  if verts_gt is not None:
+    if colors_gt is None:
+      colors_gt = visutils.get_verts_colors(verts_gt, [0.650, 0.740, 0.850])
+    if colors_prd is None and verts_prd is not None:
+      colors_prd = err_cmap_colors(verts_prd, verts_gt)
+
+  if colors_prd is None and verts_prd is not None:
+    colors_prd = visutils.get_verts_colors(verts_prd, [0.90, 0.70, 0.7])
 
   #if is_hand:
   #  faces,_ = visutils.get_closed_faces() #TODO approach
@@ -190,7 +239,7 @@ def render(
         verts_gt,
         faces,
         input_res,
-        camintrs,
+        camsintr,
         colors_gt,
         bg_color=images,
         )
@@ -202,7 +251,7 @@ def render(
         verts_prd,
         faces,
         input_res,
-        camintrs,
+        camsintr,
         colors_prd,
         bg_color=images,
         )
@@ -215,7 +264,7 @@ def render(
         verts_rotated_prd,
         faces,
         input_res,
-        camintrs,
+        camsintr,
         colors_prd,
         fill_back=False,
         bg_color=None,

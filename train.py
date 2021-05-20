@@ -59,6 +59,9 @@ def train(
     trainer,
     train_loader,
     epoch,
+    calc_metrics=False,
+    have_visualize=False,
+    vis_dir=None,
     ):
     """
       Args:
@@ -69,8 +72,15 @@ def train(
     # use tqdm for progress bar
     with tqdm(total=len(dataloader)) as t:
       for i in range(len(dataloader)):
-        batch = next(dataloader)
-        train_metrics = trainer.train_step(batch)
+
+        batch_samples = next(dataloader)
+
+        train_metrics = trainer.train_step(
+            batch_samples,
+            calc_metrics=calc_metrics,
+            have_visualize=have_visualize and i==len(dataloader)-1,
+            vis_dir=vis_dir,
+            )
 
         summary.append(train_metrics)
 
@@ -82,16 +92,20 @@ def train(
     metrics_mean = {
         metric:np.mean([x[metric] for x in summary]) for metric in summary[0]
         }
-    logging.info("- Train metrics: \n" + "::".join(F"{k}: {v:05.3f}" for k, v in metrics_mean.items()))
+    logging.info(
+        "- Train metrics: \n" + "::".join(F"{k}: {v:05.3f}" for k, v in metrics_mean.items())
+        )
     return metrics_mean
 
 
 def evaluate(
     trainer,
     val_loader,
-    vis_data,
     epoch,
-    vis_dir=None):
+    calc_metrics=False,
+    have_visualize=False,
+    vis_dir=None,
+    ):
     """
       Args:
     """
@@ -101,8 +115,15 @@ def evaluate(
     # use tqdm for progress bar
     with tqdm(total=len(dataloader)) as t:
       for i in range(len(dataloader)):
-        batch = next(dataloader)
-        eval_metrics = trainer.eval_step(batch)
+
+        batch_samples = next(dataloader)
+
+        eval_metrics = trainer.eval_step(
+            batch_samples,
+            calc_metrics=calc_metrics,
+            have_visualize=have_visualize and i==len(dataloader)-1,
+            vis_dir=vis_dir,
+            )
 
         summary.append(eval_metrics)
 
@@ -111,19 +132,18 @@ def evaluate(
         t.update()
 
     # compute mean of all metrics 
-    metrics_num = np.sum([x['samples_number'] for x in summary])
+    metrics_num = np.sum(
+        [x['samples_number'] for x in summary]
+        )
     metrics_mean = {
         metric:np.sum([x[metric]*x['samples_number'] for x in summary]) / metrics_num for metric in summary[0]
         }
     metrics_mean.update({'samples':float(metrics_num)})
     metrics_mean.pop('samples_number')
-    logging.info("- Eval metrics:\n" + " :: ".join(F"{k}: {v:05.3f}" for k, v in metrics_mean.items()))
+    logging.info(
+        "- Eval metrics:\n" + " :: ".join(F"{k}: {v:05.3f}" for k, v in metrics_mean.items())
+        )
 
-    # visualize
-    trainer.visualize(
-        vis_data,
-        vis_dir,
-        name=f'epoch{epoch}')
 
     return metrics_mean
 
@@ -137,6 +157,7 @@ def train_evaluate(
     writer,
     num_epochs=100,
     eval_freq=2,
+    vis_freq=25,
     backup_freq=50,
     restore_file=None,
     early_stopping=False,
@@ -174,7 +195,11 @@ def train_evaluate(
     train_metrics = train(
         trainer,
         train_loader,
-        epoch)
+        epoch,
+        calc_metrics=True,
+        have_visualize= epoch % vis_freq==0,
+        vis_dir=os.path.join(exp_dir,'figs',f'train-epoch{epoch}'))
+
     for metric in train_metrics:
       all_train_metrics[metric].append(train_metrics[metric])
 
@@ -195,8 +220,10 @@ def train_evaluate(
       eval_metrics = evaluate(
           trainer,
           val_loader,
-          vis_data,
-          epoch)
+          epoch,
+          calc_metrics=True,
+          have_visualize=epoch % vis_freq==0,
+          vis_dir=os.path.join(exp_dir,'figs',f'val-epoch{epoch}'))
 
       utils.save_dict_to_json(
           eval_metrics,
@@ -251,7 +278,10 @@ if __name__ == '__main__':
   args = parser.parse_args()
   json_path = os.path.join(args.exp_dir, 'config.json')
   assert os.path.isfile(json_path), f'Not a json configuration file found at "{json_path}"!'
-  cfg = utils.get_config(json_path)#TODO add inheritance config
+
+  cfg = utils.get_config(json_path)
+  with open(os.path.join(args.exp_dir, 'opt.json'), 'w') as fp:
+    json.dump(cfg, fp, indent=2, sort_keys=True)
 
   # log file
   exp_dir = os.path.join(args.exp_dir,'training')
@@ -299,31 +329,31 @@ if __name__ == '__main__':
   model = builder.get_model(
       cfg['model'],
       device=device)
-  if model is not None:
-    # optimizer
-    trainable_parameters = [p for p in model.parameters() if p.requires_grad]
-    optimizer = builder.get_optimizer(
-        cfg['training'].optimizer,
-        cfg['training'].optimizer_kwargs,
-        cfg['training'].lr,
-        trainable_parameters)
-    # scheduler
-    scheduler = builder.get_scheduler(
-        cfg['training'].get('scheduler', None),
-        cfg['training'].get('scheduler_kwargs',{}),
-        optimizer)
-  else:
-    optimizer = None
-    scheduler = None
+
+  # optimizer
+  trainable_parameters = [p for p in model.parameters() if p.requires_grad]
+  optimizer = builder.get_optimizer(
+      cfg['training'].optimizer,
+      cfg['training'].optimizer_kwargs,
+      cfg['training'].lr,
+      trainable_parameters)
+  # scheduler
+  scheduler = builder.get_scheduler(
+      cfg['training'].get('scheduler', None),
+      cfg['training'].get('scheduler_kwargs',{}),
+      optimizer)
 
   # metrics_fns
   metrics_fns = builder.get_metrics_fns(cfg['metrics'])
-  metrics_ops = cfg['metrics'].get('ops', {'loss':min})
+  metrics_ops = cfg['metrics'].get('ops', {'loss':'min'})
+  for k,v in metrics_ops.items():
+    metrics_ops[k] = min if v=="min" else max
+
 
   # specific trainer object
   side_fns = lambda x: {
       'verts2joints_fn': x.dataset._verts2joints_fn,
-      'mano_fn':x.dataset._mano_fn
+      'mano_fn': x.dataset._mano_fn
       }
   trainer = builder.get_trainer(
       cfg['model'],
@@ -355,7 +385,6 @@ if __name__ == '__main__':
     post_metrics = evaluate(
         trainer,
         val_loader if args.eval_only else test_loader,#TODO create inheritance from val config maybe
-        vis_data,
         epoch=epoch,
         vis_dir=exp_dir)
 
@@ -398,4 +427,3 @@ if __name__ == '__main__':
     # save metrics
     best_metrics_path = os.path.join(exp_dir, 'best_metrics.json')
     utils.save_dict_to_json(best_metrics, best_metrics_path)
-

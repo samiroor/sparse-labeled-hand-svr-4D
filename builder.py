@@ -18,12 +18,13 @@ import data
 import metrics
 import utils
 
-from methods import oflow, resflow, interpolate
+from methods import obman #oflow, resflow, interpolate
 
 method_dict = {
-    'oflow': oflow,
-    'resflow':resflow,
-    'interpolate':interpolate
+    'obman':obman
+    #'oflow': oflow,
+    #'resflow':resflow,
+    #'interpolate':interpolate
     }
 optimizer_dict = {
     'SGD': torch.optim.SGD,

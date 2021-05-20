@@ -8,8 +8,12 @@ from .datautil import denormalize, quat2rotvec, rotvec2quat, torch_denormalize
 from .datasets.ho3d.ho3d import HO3D
 from .datasets.fphab.fphab import FPHAB
 from .datasets.interhand26m.interhand import InterHand
+from .datasets.interhand26m.mini_interhand_v1 import MiniInterHand_v1
+
 
 from .singlehand_img_dataset import ShImgDataset
+from .supervised_singlehand_img_dataset import SupervisedShImgDataset
+
 from .singlehand_seq_dataset import ShSeqDataset
 from .flow_singlehand_seq_dataset import FlowShSeqDataset
 
@@ -18,10 +22,12 @@ data_dict = {
     'ho3d':HO3D,
     'fphab':FPHAB,
     'interhand':InterHand,
+    'mini_interhand_v1':MiniInterHand_v1,
     }
 
 dataset_dict = {
     "singlehand_img":ShImgDataset,
+    "supervised_singlehand_img":SupervisedShImgDataset,
     "singlehand_seq":ShSeqDataset,
     "flow_singlehand_seq":FlowShSeqDataset,
     }

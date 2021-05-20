@@ -2,12 +2,31 @@ import os
 import numpy as np
 from collections import defaultdict
 from tqdm import tqdm
+
 import utils
 
 
 class BaseTrainer(object):
     ''' Base trainer class.
     '''
+
+    def train_step(self, *args, **kwargs):
+        ''' Performs a training step.
+        '''
+        raise NotImplementedError
+
+
+    def eval_step(self, *args, **kwargs):
+        ''' Performs an evaluation step.
+        '''
+        raise NotImplementedError
+
+
+    def visualize_step(self, *args, **kwargs):
+        ''' Performs  visualization.
+        '''
+        raise NotImplementedError
+
 
     def evaluate(self, val_loader):
         ''' Performs an evaluation.
@@ -30,25 +49,7 @@ class BaseTrainer(object):
         return eval_dict
 
 
-    def train_step(self, *args, **kwargs):
-        ''' Performs a training step.
-        '''
-        raise NotImplementedError
-
-
-    def eval_step(self, *args, **kwargs):
-        ''' Performs an evaluation step.
-        '''
-        raise NotImplementedError
-
-
-    def visualize(self, *args, **kwargs):
-        ''' Performs  visualization.
-        '''
-        raise NotImplementedError
-
-
-    def metric_step(self, gt_dict, pred_dict, multiFrame=True):
+    def metric_step(self, gt_dict, pred_dict, multiFrame=False):
         ''' Performs a metric step.
         '''
         metrics_dict = {}

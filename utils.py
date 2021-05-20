@@ -21,11 +21,14 @@ def get_config(path, default_path=None):
 
   # load parent config or default config
   inherit_from = cfg_special.get('inherit_from', None)
+
   if inherit_from is not None:
     cfg = get_config(inherit_from, default_path)
+
   elif default_path is not None:
     with open(default_path, 'r') as f:
       cfg = yaml.load(f)
+
   else:
     cfg = EasyDict()
 
