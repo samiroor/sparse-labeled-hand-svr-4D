@@ -79,7 +79,7 @@ class InterHand(Videos):
     self._crop_bbox = cfg.get('crop_bbox', False)
     self._crop_factor = cfg.get('crop_factor', 1.2)
 
-    self._image_size = [512, 334]
+    self._image_size = [512,512] #[512, 334] #some images are [334, 512] so we pad smaller side.
     self._joints = {w: i
                     for i, w in enumerate([
                       'wrist',
@@ -180,7 +180,7 @@ class InterHand(Videos):
       focal, princpt = self.get_video_focalprincpt(anns[0])
       video_joints = self.get_video_joints3d(anns[0])
       video_mano_params = self.get_video_mano_params(anns[0])
-      self.videos.append(InterHandVideo(video_dir=video_dir,
+      self.videos.append(InterHandVideo(video_dir=os.path.join(self.db_root,video_dir),
                                         anns=anns,
                                         campos=campos,camrot=camrot,
                                         focal=focal,princpt=princpt,
@@ -253,7 +253,7 @@ class InterHand(Videos):
     for aid in db.anns.keys():
       ann = db.anns[aid]
       ann.update(db.loadImgs(ann['image_id'])[0])
-      video_dir = os.path.join(self.db_root,"images",self.split,self.ann2name(ann))
+      video_dir = os.path.join("images",self.split,self.ann2name(ann))
       if self.is_valid(ann):
         video_folders[video_dir].append(ann)
 
