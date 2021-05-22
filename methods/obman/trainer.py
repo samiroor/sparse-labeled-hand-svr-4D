@@ -16,6 +16,7 @@ from data import Fields as Fls
 from data import torch_denormalize as denormalize
 
 
+
 class ObManTrainer(BaseTrainer):
     def __init__(
         self,
@@ -52,9 +53,9 @@ class ObManTrainer(BaseTrainer):
     def train_step(
         self,
         batch_samples,
-        calc_metrics=False,
-        have_visualize=False,
         vis_dir='',
+        display=False,
+        calc_metrics=False,
         ):
         ''' Performs a train step.
 
@@ -89,7 +90,7 @@ class ObManTrainer(BaseTrainer):
               self.metric_step(batch_samples, output_batch)
               )
 
-        if have_visualize:
+        if display:
           self.visualize_step(batch_samples, output_batch, vis_dir=vis_dir)
 
         return train_dict
@@ -98,9 +99,9 @@ class ObManTrainer(BaseTrainer):
     def eval_step(
         self,
         batch_samples,
-        calc_metrics=False,
-        have_visualize=False,
         vis_dir='',
+        display=False,
+        calc_metrics=False,
         return_results=False,
         ):
 
@@ -128,7 +129,7 @@ class ObManTrainer(BaseTrainer):
               self.metric_step(batch_samples, output_batch)
             )
 
-        if have_visualize:
+        if display:
           self.visualize_step(batch_samples, output_batch, vis_dir=vis_dir)
 
         if return_results:
@@ -191,14 +192,14 @@ class ObManTrainer(BaseTrainer):
         self,
         batch_samples,
         output_batch=None,
-        have_render=True,
+        render=True,
         vis_dir='',
         ):
       if output_batch is None:
         _ = self.eval_step(
             batch_samples,
-            have_visualize=True,
-            vis_dir=vis_dir
+            vis_dir=vis_dir,
+            display=True,
             )
         return 0
 
@@ -213,7 +214,7 @@ class ObManTrainer(BaseTrainer):
       batch_size = batch_samples[Fls.images].shape[0]
 
       # rendering mesh
-      if Fls.verts3d in output_batch and have_render:
+      if Fls.verts3d in output_batch and render:
         with torch.no_grad():
           render_images = visualizer.render(
               verts_gt=batch_samples.get(Fls.verts3d,None),
@@ -263,4 +264,3 @@ class ObManTrainer(BaseTrainer):
 
         fig.savefig(os.path.join(vis_dir,f'sample_{s_i}.png'))
         plt.close(fig)
-

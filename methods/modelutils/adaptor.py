@@ -2,10 +2,13 @@ import torch
 import torch.nn as nn
 
 
+from manopth.manolayer import ManoLayer
+
+
 class ManoAdaptor(torch.nn.Module):
     def __init__(
         self,
-        mano_layer,
+        mano_layer=None,
         load_path=None,
         njoints=21,
         nverts=778,
@@ -19,6 +22,17 @@ class ManoAdaptor(torch.nn.Module):
             regressor = torch.Tensor(weights)
             self.register_buffer("J_regressor", regressor)
         else:
+            if mano_layer is None:
+                mano_layer = ManoLayer(
+      ncomps=45,
+      use_pca=False,
+      side='right',
+      center_idx=0,
+      flat_hand_mean=False,
+      mano_root='misc/mano_v1_2/models',
+      )
+
+
             regressor = mano_layer._buffers["th_J_regressor"]
             tip_reg = regressor.new_zeros(5, regressor.shape[1])
             tip_reg[0, 745] = 1
