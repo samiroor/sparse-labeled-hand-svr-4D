@@ -1,8 +1,6 @@
 {
   "inherit_from":null,
   "seed":7777,
-  "vis_freq":10,
-  "eval_freq":1,
   "training":{
     "dataloader":{
       "batch_size":32,

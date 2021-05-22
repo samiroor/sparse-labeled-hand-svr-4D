@@ -35,7 +35,7 @@ def fcs(
   layers = []
 
   if flatten: layers.append(nn.Flatten())
-  if activation: activation = get_activation(activation)
+  if activation is not None: activation = get_activation(activation)
 
   # no hiddens
   if len(ch_hiddens) == 0:
@@ -49,7 +49,7 @@ def fcs(
   for in_size, out_size in zip([ch_in] + ch_hiddens[:-1], ch_hiddens):
     if dropout: layers.append(nn.Dropout(p=dropout))
     layers.append(nn.Linear(in_size, out_size))
-    if activation: layers.append(activation)
+    if activation is not None: layers.append(activation)
 
   layers.append(nn.Linear(ch_hiddens[-1], ch_out))
   return  nn.Sequential(*layers)

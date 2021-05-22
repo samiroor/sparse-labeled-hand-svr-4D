@@ -1,8 +1,8 @@
 { 
   "inherit_from":null, # when you run add a data json path
-  "vis_freq":10,
-  "eval_freq":1,
   "training":{
+    "vis_freq":1,
+    "eval_freq":1,
     "fix_base_batch_norm":true, 
     #"grad_norm_clip": false,
     #"grad_norm_clip_value": 0.0,
@@ -48,6 +48,14 @@
       "annot_metric":"m",
       "encoder":"resnet18",
       "mano_base":"fcs",
+      "mano_base_kwargs":{
+        "ch_in":512, #c_dim,
+        "ch_out":512, #h_dim,
+        "ch_hiddens":[512],
+        "activation":"relu",
+        "dropout":0.0,
+        "flatten":false
+      },
       "st_head":"fcs",
       "obj_st_head":null,
       "loss":{

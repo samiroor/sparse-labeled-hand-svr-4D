@@ -59,9 +59,9 @@ def train(
     trainer,
     train_loader,
     epoch,
-    calc_metrics=False,
-    have_visualize=False,
     vis_dir=None,
+    display=False,
+    calc_metrics=False,
     ):
     """
       Args:
@@ -77,9 +77,9 @@ def train(
 
         train_metrics = trainer.train_step(
             batch_samples,
-            calc_metrics=calc_metrics,
-            have_visualize=have_visualize and i==len(dataloader)-1,
             vis_dir=vis_dir,
+            display=display and i==0,
+            calc_metrics=calc_metrics,
             )
 
         summary.append(train_metrics)
@@ -93,7 +93,7 @@ def train(
         metric:np.mean([x[metric] for x in summary]) for metric in summary[0]
         }
     logging.info(
-        "- Train metrics: \n" + "::".join(F"{k}: {v:05.3f}" for k, v in metrics_mean.items())
+        "- Train metrics: \n" + "::".join(F"{k}: {v:03.5f}" for k, v in metrics_mean.items())
         )
     return metrics_mean
 
@@ -101,10 +101,11 @@ def train(
 def evaluate(
     trainer,
     val_loader,
+    vis_data,
     epoch,
-    calc_metrics=False,
-    have_visualize=False,
     vis_dir=None,
+    display=False,
+    calc_metrics=False,
     ):
     """
       Args:
@@ -120,9 +121,9 @@ def evaluate(
 
         eval_metrics = trainer.eval_step(
             batch_samples,
-            calc_metrics=calc_metrics,
-            have_visualize=have_visualize and i==len(dataloader)-1,
             vis_dir=vis_dir,
+            display=display and i==0,
+            calc_metrics=calc_metrics,
             )
 
         summary.append(eval_metrics)
@@ -132,18 +133,23 @@ def evaluate(
         t.update()
 
     # compute mean of all metrics 
-    metrics_num = np.sum(
-        [x['samples_number'] for x in summary]
-        )
+    metrics_num = np.sum([x['samples_number'] for x in summary])
+
     metrics_mean = {
         metric:np.sum([x[metric]*x['samples_number'] for x in summary]) / metrics_num for metric in summary[0]
         }
     metrics_mean.update({'samples':float(metrics_num)})
     metrics_mean.pop('samples_number')
+
     logging.info(
-        "- Eval metrics:\n" + " :: ".join(F"{k}: {v:05.3f}" for k, v in metrics_mean.items())
+        "- Eval metrics:\n" + " :: ".join(F"{k}: {v:03.5f}" for k, v in metrics_mean.items())
         )
 
+    if display:
+      trainer.visualize_step(
+          vis_data,
+          vis_dir=os.path.join(vis_dir, 'vis_data'),
+          )
 
     return metrics_mean
 
@@ -197,9 +203,10 @@ def train_evaluate(
         train_loader,
         epoch,
         calc_metrics=True,
-        have_visualize= epoch % vis_freq==0,
+        display=(epoch % vis_freq==0),
         vis_dir=os.path.join(exp_dir,'figs',f'train-epoch{epoch}'))
 
+    # append train metrics
     for metric in train_metrics:
       all_train_metrics[metric].append(train_metrics[metric])
 
@@ -213,22 +220,25 @@ def train_evaluate(
     # save model 
     trainer.save_model(epoch, save_file='last.pt')
     if (epoch+1) % backup_freq == 0:
-      trainer.save_model(epoch, save_file=f'e{epoch+1}.pt')
+      trainer.save_model(epoch, save_file=f'ckpt_epoch{epoch+1}.pt')
 
-    # evaluate 
     if (epoch+1) % eval_freq == 0:
+      # evaluate 
       eval_metrics = evaluate(
           trainer,
           val_loader,
+          vis_data,
           epoch,
           calc_metrics=True,
-          have_visualize=epoch % vis_freq==0,
-          vis_dir=os.path.join(exp_dir,'figs',f'val-epoch{epoch}'))
+          display=(epoch % vis_freq==0),
+          vis_dir=os.path.join(exp_dir,'figs',f'val_epoch{epoch}'))
 
+      # save last metrics
       utils.save_dict_to_json(
           eval_metrics,
           os.path.join(exp_dir, "metrics_eval_last_weights.json"))
 
+      # append eval metrics
       for metric in eval_metrics:
         all_eval_metrics[metric].append(eval_metrics[metric])
 
@@ -236,23 +246,27 @@ def train_evaluate(
       for k,v in eval_metrics.items():
         writer.add_scalar('val_'+k, v, epoch)
 
-      # is best ?
+      # is best on that metric?
       for metric in metrics_ops:
         if metric not in eval_metrics:
           continue
+
         if metrics_ops[metric] == min:
           is_best = eval_metrics[metric] <= best_metrics_vals[metric]
         else:
           is_best = eval_metrics[metric] >= best_metrics_vals[metric]
+
         if is_best:
           logging.info("- Found new best {}".format(metric))
-          trainer.save_model(epoch, save_file='best.pt')
+          trainer.save_model(epoch, save_file=f'best_{metric}.pt')
+
           eval_metrics.update({'epoch':epoch+1})
           best_metrics_vals[metric] = eval_metrics[metric]
           best_metrics[metric] = eval_metrics
+
           utils.save_dict_to_json(
-              best_metrics,
-              os.path.join(exp_dir, "metrics_eval_best_{}.json".format(metric))
+              best_metrics[metric],
+              os.path.join(exp_dir, f"metrics_eval_best_{metric}.json")
               )
 
     # early stop
@@ -284,7 +298,7 @@ if __name__ == '__main__':
     json.dump(cfg, fp, indent=2, sort_keys=True)
 
   # log file
-  exp_dir = os.path.join(args.exp_dir,'training')
+  exp_dir = os.path.join(args.exp_dir,'run')
 
   # set device
   is_cuda = (torch.cuda.is_available() and not args.no_cuda)
@@ -296,23 +310,25 @@ if __name__ == '__main__':
   if is_cuda: torch.cuda.manual_seed(seed)
   utils.fix_rng_seed(seed)
 
-  # data loaders
+  ### data loaders ###
   if not (args.eval_only or args.test_only):
     train_loader = builder.get_dataloaders(
         cfg['training'].dataloader,
         training=True,
         do_augment=args.augment,
-        shuffle=True)
+        shuffle=True,
+        )
 
   if not args.test_only:
     cfg['visualizing'] = cfg['evaluating']
-    cfg['visualizing']['dataloader'].batch_size = 16
+    cfg['visualizing']['dataloader'].batch_size = 32
 
     vis_loader = builder.get_dataloaders(
         cfg['visualizing'].dataloader,
         training=False,
         do_augment=False,
-        shuffle=True)
+        shuffle=True,
+        )
     vis_data = next(iter(vis_loader))
     vis_loader = None
 
@@ -320,12 +336,13 @@ if __name__ == '__main__':
         cfg['evaluating'].dataloader,
         training=False,
         do_augment=False,
-        shuffle=False)
+        shuffle=False,
+        )
 
   if args.test_only:
     pass #TODO
 
-  # model & optimizer & scheduler
+  ### model ###
   model = builder.get_model(
       cfg['model'],
       device=device)
@@ -336,21 +353,26 @@ if __name__ == '__main__':
       cfg['training'].optimizer,
       cfg['training'].optimizer_kwargs,
       cfg['training'].lr,
-      trainable_parameters)
+      trainable_parameters,
+      )
+
   # scheduler
   scheduler = builder.get_scheduler(
       cfg['training'].get('scheduler', None),
       cfg['training'].get('scheduler_kwargs',{}),
-      optimizer)
+      optimizer,
+      )
 
-  # metrics_fns
+  ### metrics_fns ###
   metrics_fns = builder.get_metrics_fns(cfg['metrics'])
+
+  # metrics operations
   metrics_ops = cfg['metrics'].get('ops', {'loss':'min'})
   for k,v in metrics_ops.items():
     metrics_ops[k] = min if v=="min" else max
 
 
-  # specific trainer object
+  ### trainer object ###
   side_fns = lambda x: {
       'verts2joints_fn': x.dataset._verts2joints_fn,
       'mano_fn': x.dataset._mano_fn
@@ -367,38 +389,47 @@ if __name__ == '__main__':
       )
 
 
-  # train & validate & test
-  if args.eval_only  or args.test_only:
+  if args.eval_only or args.test_only:
+    #### validate or test ####
     epoch = trainer.restore_model(
         args.restore_file,
         off_scheduler=True,
         )
+
     exp_dir = os.path.join(
-        args.exp_dir,
-        f'{"eval_on_" if args.eval_only else "test_on_"}{args.restore_file[:-3]}')
+        exp_dir,
+        f'{"eval_on_" if args.eval_only else "test_on_"}_{args.restore_file[:-3]}_epoch{epoch}')
+
 
     # set loggers 
-    logpath = os.path.join(exp_dir, 'logFile.log')
+    logpath = os.path.join(exp_dir, 'eval-logFile.log')
     utils.set_logger(logpath)
 
     # run
-    post_metrics = evaluate(
+    mean_metrics = evaluate(
         trainer,
-        val_loader if args.eval_only else test_loader,#TODO create inheritance from val config maybe
+        val_loader if args.eval_only else test_loader,
+        vis_data,
         epoch=epoch,
-        vis_dir=exp_dir)
+        vis_dir=os.path.join(exp_dir,'figs'),
+        display=True,
+        calc_metrics=True)
+
 
     # logging metrics
-    logging.info(F'== {"eval" if args.eval_only else "testing" } @ "{args.restore_file}"==')
-    logging.info("- metrics: " + " ; ".join(F"{k}: {v:05.3f}" for k, v in post_metrics.items()))
+    logging.info(F'========== {"evaling" if args.eval_only else "testing" } =========')
+    logging.info(F'========== @ "{args.restore_file}" ==========')
+    logging.info("- metrics: " + " ; ".join(F"{k}: {v:05.3f}" for k, v in mean_metrics.items()))
 
     # save metrics
     utils.save_dict_to_json(
-        post_metrics,
-        os.path.join(exp_dir, "result.json"),
+        mean_metrics,
+        os.path.join(exp_dir, "mean_metrics.json"),
         )
 
   else:
+    #### training  ####
+
     # set loggers & writers
     logpath = os.path.join(exp_dir, 'logFile.log')
     utils.set_logger(logpath)
@@ -416,13 +447,20 @@ if __name__ == '__main__':
         writer,
         num_epochs=cfg['training'].get('num_epochs',100),
         eval_freq=cfg['training'].get('eval_freq', 1),
-        backup_freq=cfg['training'].get('backup_freq',50),
+        vis_freq=cfg['training'].get('vis_freq', 8),
+        backup_freq=cfg['training'].get('backup_freq', 8),
         restore_file=args.restore_file,
         )
 
     # logging metrics
     logging.info("Final Mean Metrics")
-    logging.info("- metrics: \n" + " :: ".join(F"{k}: {v:05.3f}" for k, v in best_metrics.items()))
+    for metric in best_metrics:
+      logging.info(f"best metrics for {metric}:")
+      logging.info(
+          "-    metrics: \n" + " :: ".join(
+            f"{k}: {v:05.3f}" for k, v in best_metrics[metric].items()
+            )
+          )
 
     # save metrics
     best_metrics_path = os.path.join(exp_dir, 'best_metrics.json')

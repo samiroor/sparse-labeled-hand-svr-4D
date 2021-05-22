@@ -1,4 +1,7 @@
+import os
 import numpy as np
+import commentjson as json
+from easydict import EasyDict
 import torch
 
 from . import collate
@@ -53,7 +56,7 @@ def select_data(
   mini_dataset = cfg.get('mini_dataset', {})
   if use_mini_dataset:
     if not bool(mini_dataset):
-      subset_file = f"misc/use_mini_dataset/{cfg.name}_minimal.json"
+      subset_file = f"misc/mini_{cfg.name}_v1.json"
       assert os.path.exists(subset_file), f'Not found "{data_file}".'
       with open(subset_file, 'r') as f:
         subset = EasyDict(json.load(f))

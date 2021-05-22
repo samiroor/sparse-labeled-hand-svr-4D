@@ -69,15 +69,14 @@ class ObMan(nn.Module):
     # mano
     mano_features = self.mano_base(features)
     R = self.R_head(mano_features)
-    pose = self.pose_head(mano_features)
+    pose_ = self.pose_head(mano_features)
     shape = self.shape_head(mano_features) if self.shape_head else None
 
-    th_pose_coeffs=torch.cat([R, pose], dim=1)
-    th_betas=shape
+    pose=torch.cat([R, pose_], dim=-1)
 
     verts3d_rel, joints3d_rel = self.manolayer(
-        th_pose_coeffs=th_pose_coeffs,
-        th_betas=th_betas,
+        th_pose_coeffs=pose,
+        th_betas=shape,
         )
 
     # mano adaptor
@@ -97,10 +96,10 @@ class ObMan(nn.Module):
     output_batch = {
         Fls.joints3d_rel: joints3d_rel,
         Fls.verts3d_rel: verts3d_rel,
-        Fls.mano_poses: th_pose_coeffs,
+        Fls.mano_poses: pose,
         }
-    if th_betas is not None:
-      output_batch[Fls.mano_shapes] = th_betas
+    if shape is not None:
+      output_batch[Fls.mano_shapes] = shape
 
 
     # hand scale trans

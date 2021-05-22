@@ -11,10 +11,12 @@ class Fields(object):
   mano_poses = "mano_poses"
   mano_poses_quat = "mano_poses_quat"
 
+  verts3dcan= "verts3dcan"
   verts3d = "verts3d"
   verts2d = "verts2d"
   faces = "faces"
 
+  joints3dcan = "joints3dcan"
   joints3d = "joints3d"
   joints2d = "joints2d"
   jointsvis = "jointsvis"

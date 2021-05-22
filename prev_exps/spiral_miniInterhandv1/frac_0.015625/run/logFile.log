@@ -1,0 +1,22 @@
+2021-05-22 14:10:52,517:INFO: ======== Training ========
+2021-05-22 14:10:52,518:INFO: exps/spiral_miniInterhandv1/frac_0.015625/run
+2021-05-22 14:10:52,518:INFO: Epoch 1/100
+2021-05-22 14:13:30,531:INFO: ======== Training ========
+2021-05-22 14:13:30,531:INFO: exps/spiral_miniInterhandv1/frac_0.015625/run
+2021-05-22 14:13:30,532:INFO: Epoch 1/100
+2021-05-22 14:16:36,798:INFO: - Train metrics: 
+joints3d: 0.00371::loss: 0.00186::samples_number: 7.99850::xyz_mean3d: 79.56302::xyz_auc3d_sub: 0.15719::xyz_auc3d: 0.09757::xyz_trans_al_mean3d: 178.53304::xyz_trans_al_auc3d_sub: 0.06122::xyz_trans_al_auc3d: 0.05593::xyz_scale_trans_al_mean3d: 236.84995::xyz_scale_trans_al_auc3d_sub: 0.06051::xyz_scale_trans_al_auc3d: 0.05550::xyz_procrustes_al_mean3d: 37.96140::xyz_procrustes_al_auc3d_sub: 0.52051::xyz_procrustes_al_auc3d: 0.33478::xyz_procrustes_woR_al_mean3d: 48.18155::xyz_procrustes_woR_al_auc3d_sub: 0.38195::xyz_procrustes_woR_al_auc3d: 0.24133
+2021-05-22 14:16:50,463:INFO: - Eval metrics:
+joints3d: 0.00066 :: loss: 0.00033 :: xyz_mean3d: 41.72884 :: xyz_auc3d_sub: 0.37257 :: xyz_auc3d: 0.22828 :: xyz_trans_al_mean3d: 101.26360 :: xyz_trans_al_auc3d_sub: 0.04762 :: xyz_trans_al_auc3d: 0.04762 :: xyz_scale_trans_al_mean3d: 96.94128 :: xyz_scale_trans_al_auc3d_sub: 0.04762 :: xyz_scale_trans_al_auc3d: 0.04762 :: xyz_procrustes_al_mean3d: 21.36743 :: xyz_procrustes_al_auc3d_sub: 0.89629 :: xyz_procrustes_al_auc3d: 0.61925 :: xyz_procrustes_woR_al_mean3d: 22.87481 :: xyz_procrustes_woR_al_auc3d_sub: 0.86308 :: xyz_procrustes_woR_al_auc3d: 0.58600 :: samples: 64.00000
+2021-05-22 14:16:59,940:INFO: - Found new best xyz_mean3d
+2021-05-22 14:17:00,042:INFO: Epoch 2/100
+2021-05-22 14:19:59,527:INFO: - Train metrics: 
+joints3d: 0.00092::loss: 0.00046::samples_number: 7.99850::xyz_mean3d: 45.93985::xyz_auc3d_sub: 0.38814::xyz_auc3d: 0.24472::xyz_trans_al_mean3d: 88.45544::xyz_trans_al_auc3d_sub: 0.08377::xyz_trans_al_auc3d: 0.06963::xyz_scale_trans_al_mean3d: 102.76955::xyz_scale_trans_al_auc3d_sub: 0.08449::xyz_scale_trans_al_auc3d: 0.07011::xyz_procrustes_al_mean3d: 26.46590::xyz_procrustes_al_auc3d_sub: 0.74430::xyz_procrustes_al_auc3d: 0.50091::xyz_procrustes_woR_al_mean3d: 32.72393::xyz_procrustes_woR_al_auc3d_sub: 0.63309::xyz_procrustes_woR_al_auc3d: 0.41726
+2021-05-22 14:20:03,875:INFO: - Eval metrics:
+joints3d: 0.00027 :: loss: 0.00014 :: xyz_mean3d: 25.00325 :: xyz_auc3d_sub: 0.76372 :: xyz_auc3d: 0.51694 :: xyz_trans_al_mean3d: 76.23274 :: xyz_trans_al_auc3d_sub: 0.04762 :: xyz_trans_al_auc3d: 0.04762 :: xyz_scale_trans_al_mean3d: 72.21577 :: xyz_scale_trans_al_auc3d_sub: 0.04762 :: xyz_scale_trans_al_auc3d: 0.04762 :: xyz_procrustes_al_mean3d: 17.99331 :: xyz_procrustes_al_auc3d_sub: 0.91638 :: xyz_procrustes_al_auc3d: 0.66304 :: xyz_procrustes_woR_al_mean3d: 18.75465 :: xyz_procrustes_woR_al_auc3d_sub: 0.90242 :: xyz_procrustes_woR_al_auc3d: 0.64795 :: samples: 64.00000
+2021-05-22 14:20:04,837:INFO: - Found new best xyz_mean3d
+2021-05-22 14:20:05,173:INFO: Epoch 3/100
+2021-05-22 14:23:38,477:INFO: ======== Training ========
+2021-05-22 14:23:38,478:INFO: exps/spiral_miniInterhandv1/frac_0.015625/run
+2021-05-22 14:23:38,478:INFO: Restoring metrics from exps/spiral_miniInterhandv1/frac_0.015625/run
+2021-05-22 14:23:38,589:INFO: Epoch 3/100
