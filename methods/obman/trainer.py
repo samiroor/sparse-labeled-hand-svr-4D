@@ -87,11 +87,11 @@ class ObManTrainer(BaseTrainer):
 
         if calc_metrics:
           train_dict.update(
-              self.metric_step(batch_samples, output_batch)
+              self.metric_step(batch_samples.copy(), output_batch.copy())
               )
 
         if display:
-          self.visualize_step(batch_samples, output_batch, vis_dir=vis_dir)
+          self.visualize_step(batch_samples.copy(), output_batch.copy(), vis_dir=vis_dir)
 
         return train_dict
 
@@ -126,11 +126,11 @@ class ObManTrainer(BaseTrainer):
 
         if calc_metrics:
           eval_dict.update(
-              self.metric_step(batch_samples, output_batch)
+              self.metric_step(batch_samples.copy(), output_batch.copy())
             )
 
         if display:
-          self.visualize_step(batch_samples, output_batch, vis_dir=vis_dir)
+          self.visualize_step(batch_samples.copy(), output_batch.copy(), vis_dir=vis_dir)
 
         if return_results:
             return eval_dict, output_batch
@@ -210,7 +210,7 @@ class ObManTrainer(BaseTrainer):
         batch_samples[k] = batch_samples[k].float().to(device)
 
       assert Fls.images in batch_samples, 'Expected images in batch'
-      batch_samples[Fls.images] = denormalize(batch_samples[Fls.images]) #B,c,H,W
+      batch_samples[Fls.images]= denormalize(batch_samples[Fls.images].clone()) #B,c,H,W
       batch_size = batch_samples[Fls.images].shape[0]
 
       # rendering mesh
