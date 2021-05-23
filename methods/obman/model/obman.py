@@ -18,12 +18,14 @@ class ObMan(nn.Module):
       shape_head,
       st_head,
       obj_st_head,
-      scale_factor=0.0001,trans_factor=100.0,
-      return_mano_features=False,
-      return_encoder_features=False,
       use_adaptor=False,
       adaptor_path=None,
+      return_mano_features=False,
+      return_encoder_features=False,
       annot_metric='m',
+      scale_factor=0.0001,
+      trans_factor=100.0,
+      off_z=0.4,
       **kwargs):
 
     super().__init__()
@@ -40,12 +42,13 @@ class ObMan(nn.Module):
     self.st_head = st_head
     self.obj_st_head = obj_st_head
 
-    self.scale_factor = scale_factor
-    self.trans_factor = trans_factor
-
     self.return_mano_features = return_mano_features
     self.return_encoder_features = return_encoder_features
+
     self.annot_metric = annot_metric
+    self.scale_factor = scale_factor
+    self.trans_factor = trans_factor
+    self.off_z = off_z
 
     self.adaptor = None
     if use_adaptor:
@@ -113,6 +116,7 @@ class ObMan(nn.Module):
           camsintr,
           scale,
           trans,
+          off_z=self.off_z,
           annot_metric=self.annot_metric,
           input_res=(W, H),
           )
@@ -146,6 +150,7 @@ class ObMan(nn.Module):
           camsintr,
           self.scale_factor,
           self.trans_factor,
+          off_z=self.off_z,
           annot_metric=self.annot_metric,
           input_res=(W, H),
           cancorners=input_batch[Fls.objcorners3dcan_prim] if Fls.objcorners3dcan_prim in input_batch else None,
@@ -171,6 +176,4 @@ class ObMan(nn.Module):
       output_batch['encoder_features'] = features
 
     return output_batch
-
-
 

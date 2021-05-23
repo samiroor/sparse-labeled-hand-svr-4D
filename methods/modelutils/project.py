@@ -8,8 +8,8 @@ def recover_3d_proj(
     camintr,
     est_scale,
     est_trans,
-    annot_metric='m',
     off_z=0.4,
+    annot_metric='m',
     input_res=(128, 128),
     ):
     """
@@ -54,6 +54,7 @@ def recover_object(canverts,
                    camintr,
                    scale_factor,
                    trans_factor,
+                   off_z,
                    annot_metric=None,
                    input_res=None,
                    cancorners=None):
@@ -84,6 +85,7 @@ def recover_object(canverts,
                                         camintr,
                                         final_scale,
                                         final_trans,
+                                        off_z=off_z,
                                         annot_metric=annot_metric,
                                         input_res=input_res)
     # Recover 2D positions given camera intrinsic parameters and object vertex

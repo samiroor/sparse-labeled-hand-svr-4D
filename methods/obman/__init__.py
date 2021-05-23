@@ -17,7 +17,7 @@ st_head_dict = {'fcs': layers.fcs}
 def get_model(
     cfg,
     device=None,
-    **kwargsi,
+    **kwargs,
     ):
 
 
@@ -25,13 +25,17 @@ def get_model(
   c_dim = cfg.get('c_dim', 512) # encoder output dim
   h_dim = cfg.get('h_dim', 512) # pose & shape head input dim
 
-  scale_factor = cfg.get('scale_factor', 0.0001)
-  trans_factor = cfg.get('trans_factor', 100.0)
-
   return_mano_features = cfg.get('return_mano_features', False)
   return_encoder_features = cfg.get('return_encoder_features', False)
   use_adaptor = cfg.get('use_adaptor', False)
   adaptor_path = cfg.get('adaptor_path', None)
+
+  annot_metric = cfg.get('annot_metric', 'm')
+
+  # projection setup
+  off_z = cfg.get('off_z', 0.4) # camera distance from object in meter.
+  scale_factor = cfg.get('scale_factor', 0.0001)
+  trans_factor = cfg.get('trans_factor', 100.0)
 
   # mano
   ncomps = cfg.get('ncomps', 15)
@@ -43,8 +47,6 @@ def get_model(
   root_rot_mode = cfg.get('root_rot_mode','axisang')
   joint_rot_mode = cfg.get('joint_rot_mode','axisang')
   mano_root = cfg.get('mano_root', 'misc/mano_v1_2/models')
-
-  annot_metric = cfg.get('annot_metric', 'm')
 
   # arch
   encoder = cfg.get('encoder', 'resnet18')
@@ -123,6 +125,7 @@ def get_model(
       obj_st_head=obj_st_head,
       scale_factor=scale_factor,
       trans_factor=trans_factor,
+      off_z=off_z,
       return_mano_features=return_mano_features,
       return_encoder_features=return_encoder_features,
       use_adaptor=use_adaptor,
