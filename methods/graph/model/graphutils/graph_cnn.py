@@ -8,45 +8,44 @@ import torch
 import torch.nn as nn
 
 from .graph_layers import GraphResBlock, GraphLinear
-from .resnet import resnet50
 
 class GraphCNN(nn.Module):
-    
-    def __init__(self, A, ref_vertices, num_layers=5, num_channels=512):
-        super(GraphCNN, self).__init__()
-        self.A = A
-        self.ref_vertices = ref_vertices
-        self.resnet = resnet50(pretrained=True)
-        layers = [GraphLinear(3 + 2048, 2 * num_channels)]
-        layers.append(GraphResBlock(2 * num_channels, num_channels, A))
-        for i in range(num_layers):
-            layers.append(GraphResBlock(num_channels, num_channels, A))
-        self.shape = nn.Sequential(GraphResBlock(num_channels, 64, A),
-                                   GraphResBlock(64, 32, A),
-                                   nn.GroupNorm(32 // 8, 32),
-                                   nn.ReLU(inplace=True),
-                                   GraphLinear(32, 3))
-        self.gc = nn.Sequential(*layers)
-        self.camera_fc = nn.Sequential(nn.GroupNorm(num_channels // 8, num_channels),
-                                      nn.ReLU(inplace=True),
-                                      GraphLinear(num_channels, 1),
-                                      nn.ReLU(inplace=True),
-                                      nn.Linear(A.shape[0], 3))
 
-    def forward(self, image):
-        """Forward pass
-        Inputs:
-            image: size = (B, 3, 224, 224)
-        Returns:
-            Regressed (subsampled) non-parametric shape: size = (B, 1723, 3)
-            Weak-perspective camera: size = (B, 3)
-        """
-        batch_size = image.shape[0]
-        ref_vertices = self.ref_vertices[None, :, :].expand(batch_size, -1, -1)
-        image_resnet = self.resnet(image)
-        image_enc = image_resnet.view(batch_size, 2048, 1).expand(-1, -1, ref_vertices.shape[-1])
-        x = torch.cat([ref_vertices, image_enc], dim=1)
-        x = self.gc(x)
-        shape = self.shape(x)
-        camera = self.camera_fc(x).view(batch_size, 3)
-        return shape, camera
+  def __init__(self,
+               in_dim,
+               grb_num,
+               A,
+               ref_vertices):
+    """
+    Args:
+      in_dim (int): feature dimension as input to the graph.
+      grb_num (int): graph residual blocks number.
+      A (torch.Tensor): NxN Adjacency matrix.
+      ref_vertices (torch.Tensor): 3xN template vertices location; could be normalized or not!
+    Returns:
+    """
+    super(GraphCNN, self).__init__()
+    self.A = A
+    self.ref_vertices = ref_vertices
+    assert ref_vertices.shape[0] ==3,"Should be transposed!"
+
+    layers = [GraphLinear(3 + in_dim, in_dim // 2)]
+    for i in range(grb_num):
+      layers.append(GraphResBlock(in_dim // 2, in_dim // 2, self.A))
+    layers.extend([GraphResBlock(in_dim // 2, 64, self.A),
+                   GraphResBlock(64, 32, self.A),
+                   nn.GroupNorm(32 // 8, 32),
+                   nn.ReLU(inplace=True),
+                   GraphLinear(32, 3)])
+
+    self.layers = nn.Sequential(*layers)
+
+  def forward(self, features):
+    #[3,N] => [B,3,N]
+    ref_vertices = self.ref_vertices[None].expand(features.shape[0], -1, -1)
+    #[B,D] => [B,D,N]
+    features = features[:,:,None].expand(-1, -1, ref_vertices.shape[-1])
+    inp = torch.cat([ref_vertices, features], dim=1)
+    #[B,3,N]
+    verts = self.layers(inp)
+    return verts
