@@ -319,6 +319,17 @@ if __name__ == '__main__':
         shuffle=True,
         )
 
+    mean_std_loader=None
+    if cfg['training'].get('calc_mean_std',False):
+      mean_std_loader = builder.get_dataloaders(
+        cfg['training'].dataloader,
+        training=True,
+        do_augment=False,
+        shuffle=False,
+        )
+      mean_std_loader.dataset.do_augment = False
+      mean_std_loader.dataset.labelset = ['verts3d','verts3d_rel', 'joints3d_rel']
+
   if not args.test_only:
     cfg['visualizing'] = cfg['evaluating']
     cfg['visualizing']['dataloader'].batch_size = 32
@@ -371,7 +382,6 @@ if __name__ == '__main__':
   for k,v in metrics_ops.items():
     metrics_ops[k] = min if v=="min" else max
 
-
   ### trainer object ###
   side_fns = lambda x: {
       'verts2joints_fn': x.dataset._verts2joints_fn,
@@ -385,9 +395,9 @@ if __name__ == '__main__':
       metrics_fns,
       device,
       exp_dir,
-      **side_fns(val_loader if not args.test_only else test_loader)
+      **side_fns(val_loader if not args.test_only else test_loader),
+      mean_std_loader=mean_std_loader,
       )
-
 
   if args.eval_only or args.test_only:
     #### validate or test ####

@@ -18,11 +18,12 @@ import data
 import metrics
 import utils
 
-from methods import obman, spiral #oflow, resflow, interpolate
+from methods import obman, graph #spiral #oflow, resflow, interpolate
 
 method_dict = {
     'obman':obman,
-    'spiral':spiral,
+    'graph':graph,
+    #'spiral':spiral,
     #'oflow': oflow,
     #'resflow':resflow,
     #'interpolate':interpolate

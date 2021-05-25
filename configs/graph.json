@@ -1,0 +1,70 @@
+{ 
+  "inherit_from":"configs/supervised_singlehand_img.json",
+  "training":{
+    "vis_freq":5,
+    "eval_freq":1,
+    "fix_base_batch_norm":true, 
+    #"grad_norm_clip": false,
+    #"grad_norm_clip_value": 0.0,
+    "optimizer":"Adam",
+    "optimizer_kwargs":{"weight_decay":0.0},
+    "lr": 1e-4,
+    "scheduler":"ExponentialLR",
+    "scheduler_kwargs":{"gamma":0.90, "last_epoch":-1},
+    "num_epochs": 100,
+    "calc_mean_std":true,
+    "dataloader":{
+      "batch_size":32,
+      "workers": 8,
+      "datasets":{} 
+    }
+  },
+  "evaluating":{
+    "dataloader":{
+      "batch_size":32,
+      "workers": 8,
+      "datasets":{}
+    }
+  },
+  "metrics":{
+    "names":["hand3d"],
+    "ops":{"xyz_mean3d":"min"}#{"loss": "min"}
+  },
+  "model":{
+    "name":"graph",
+    "graph":{
+      "c_dim":512,
+      "h_dim":512,
+      "scale_factor":0.0001,
+      "trans_factor":100,
+      "off_z":0.4,
+      "return_graph_features":false,
+      "return_encoder_features":false,
+      "use_adaptor":true, 
+      "adaptor_path":null,
+      "ref_side":"right",
+      "center_idx":0,
+      "annot_metric":"m",
+      "encoder":"resnet18",
+      "graph_base":"fcs",
+      "graph_base_kwargs":{
+        "ch_in":512, #c_dim,
+        "ch_out":512, #h_dim,
+        "ch_hiddens":[512],
+        "activation":"relu",
+        "dropout":0.0,
+        "flatten":false
+      },
+      "graph_block_num":5,
+      "st_head":"fcs",
+      "obj_st_head":null,
+      "mean_file":"misc/graph/miniho3dv1_mean_meter.npy", #better to have in exp_dir because of variable supervision fraction
+      "std_file":"misc/graph/miniho3dv1_std_meter.npy",
+      "reference_mesh_file":"misc/graph/template_right_meter.obj",
+      "downsample_file":"misc/graph/downsample_{}.pkl",
+      "loss":{
+        "verts3d":[0.5,"l2"]
+      }
+    }
+  }
+}
