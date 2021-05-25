@@ -1,27 +1,27 @@
 from __future__ import division
 import torch
+import pickle
 import numpy as np
 import scipy.sparse
 
-from models import SMPL
-from models.graph_layers import spmm
+from .graph_layers import spmm
 
 def scipy_to_pytorch(A, U, D):
     """Convert scipy sparse matrices to pytorch sparse matrix."""
     ptU = []
     ptD = []
-    
+
     for i in range(len(U)):
         u = scipy.sparse.coo_matrix(U[i])
         i = torch.LongTensor(np.array([u.row, u.col]))
         v = torch.FloatTensor(u.data)
         ptU.append(torch.sparse.FloatTensor(i, v, u.shape))
-    
+
     for i in range(len(D)):
         d = scipy.sparse.coo_matrix(D[i])
         i = torch.LongTensor(np.array([d.row, d.col]))
         v = torch.FloatTensor(d.data)
-        ptD.append(torch.sparse.FloatTensor(i, v, d.shape)) 
+        ptD.append(torch.sparse.FloatTensor(i, v, d.shape))
 
     return ptU, ptD
 
@@ -47,35 +47,38 @@ def adjmat_sparse(adjmat, nsize=1):
     adjmat = torch.sparse.FloatTensor(i, v, adjmat.shape)
     return adjmat
 
-def get_graph_params(filename, nsize=1):
-    """Load and process graph adjacency matrix and upsampling/downsampling matrices."""
-    data = np.load(filename, encoding='latin1')
-    A = data['A']
-    U = data['U']
-    D = data['D']
+def get_graph_params(downsample_file, nsize=1):
+    print("Loading Transform Matrices ..")
+    with open(downsample_file, 'rb') as fp:
+        downsampling_matrices = pickle.load(fp)
+
+    A = downsampling_matrices['A']
+    D = downsampling_matrices['D']
+    U = downsampling_matrices['U']
+    F = downsampling_matrices['F']
+
     U, D = scipy_to_pytorch(A, U, D)
     A = [adjmat_sparse(a, nsize=nsize) for a in A]
     return A, U, D
 
 class Mesh(object):
     """Mesh object that is used for handling certain graph operations."""
-    def __init__(self, filename='data/mesh_downsampling.npz',
-                 num_downsampling=1, nsize=1, device=torch.device('cuda')):
-        self._A, self._U, self._D = get_graph_params(filename=filename, nsize=nsize)
+    def __init__(self,
+                 downsample_file='downsampling_matrices.pkl',
+                 num_downsampling=0,
+                 nsize=1,
+                 ref_faces=None,
+                 ref_vertices=None,
+                 device=None):
+
+        self._A, self._U, self._D = get_graph_params(downsample_file=downsample_file, nsize=nsize)
         self._A = [a.to(device) for a in self._A]
         self._U = [u.to(device) for u in self._U]
         self._D = [d.to(device) for d in self._D]
         self.num_downsampling = num_downsampling
 
-        # load template vertices from SMPL and normalize them
-        smpl = SMPL()
-        ref_vertices = smpl.v_template
-        center = 0.5*(ref_vertices.max(dim=0)[0] + ref_vertices.min(dim=0)[0])[None]
-        ref_vertices -= center
-        ref_vertices /= ref_vertices.abs().max().item()
-
         self._ref_vertices = ref_vertices.to(device)
-        self.faces = smpl.faces.int().to(device)
+        self.faces = ref_faces.int().to(device)
 
     @property
     def adjmat(self):
