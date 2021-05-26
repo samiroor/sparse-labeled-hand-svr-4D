@@ -146,8 +146,7 @@ class MiniInterHand_v1(Videos):
     elif self.split == 'val':
       video_names = annots['video_names'][-val_idx:]
     if self.split == 'test':
-      pass
-      #TODO
+      video_names = annots['video_names'] # len(annots) == len(video_names)
 
     video_folders  = dict(filter(lambda elem:elem[0] in video_names, annots['video_folders'].items()))
 

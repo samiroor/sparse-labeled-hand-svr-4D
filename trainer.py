@@ -28,27 +28,6 @@ class BaseTrainer(object):
         raise NotImplementedError
 
 
-    def evaluate(self, val_loader):
-        ''' Performs an evaluation.
-        Args:
-            val_loader (dataloader): Pytorch dataloader
-        '''
-        eval_list = list()
-
-        for batch_samples in tqdm(val_loader):
-            eval_step_dict = self.eval_step(batch_samples)
-            eval_list.append(eval_step_dict)
-
-        # compute mean of all metrics 
-        num = np.sum([x['samples_number'] for x in eval_list])
-        eval_dict  = {
-            k: np.sum(
-                [x[k]*x['samples_number'] for x in summary]
-                ) / num for k in summary[0]
-            }
-        return eval_dict
-
-
     def metric_step(self, gt_dict, pred_dict, multiFrame=False):
         ''' Performs a metric step.
         '''

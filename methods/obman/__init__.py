@@ -131,6 +131,7 @@ def get_model(
       use_adaptor=use_adaptor,
       adaptor_path=adaptor_path,
       annot_metric=annot_metric,
+      **kwargs,
       )
   model = nn.DataParallel(model).to(device)
   return model

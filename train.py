@@ -1,12 +1,13 @@
 import os
-import commentjson as json
 import time
+import pickle
 import open3d
 import logging
 import argparse
 import random
 import numpy as np
 from tqdm import tqdm
+import commentjson as json
 from easydict import EasyDict
 from collections import defaultdict
 from tensorboardX import SummaryWriter
@@ -14,22 +15,21 @@ from tensorboardX import SummaryWriter
 import torch
 import torch.optim as optim
 from torch.nn.utils import clip_grad_norm_
-from torch.autograd import Variable
-from torch.optim import Adam, Adamax
 
 import utils
 import builder
+
 
 parser = argparse.ArgumentParser(
     description='Training a 4D SVR model (Single View Reconstruction).'
 )
 
 parser.add_argument('--exp_dir', default='exp_dir/config.json', help="Experiment Directory & config")
+parser.add_argument('--restore_file', default=None, help="Weights to reload before training")
+parser.add_argument('--augment', action='store_true', help='Training with augmentation')
+parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
 parser.add_argument('--eval_only', dest='eval_only', action='store_true')
 parser.add_argument('--test_only', dest='test_only', action='store_true')
-parser.add_argument('--restore_file', default=None, help="Weights to reload before training")
-parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
-parser.add_argument('--augment', action='store_true', help='Training with augmentation')
 
 
 
@@ -53,6 +53,7 @@ def restore_metrics(exp_dir):
         post_metrics = json.load(f)
         best_metrics[metric] = post_metrics
         best_metrics_vals[metric] = post_metrics[metric]
+
 
 
 def train(
@@ -92,10 +93,13 @@ def train(
     metrics_mean = {
         metric:np.mean([x[metric] for x in summary]) for metric in summary[0]
         }
+
     logging.info(
         "- Train metrics: \n" + "::".join(F"{k}: {v:03.5f}" for k, v in metrics_mean.items())
         )
+
     return metrics_mean
+
 
 
 def evaluate(
@@ -106,6 +110,8 @@ def evaluate(
     vis_dir=None,
     display=False,
     calc_metrics=False,
+    save=False,
+    save_dir=None,
     ):
     """
       Args:
@@ -151,7 +157,12 @@ def evaluate(
           vis_dir=os.path.join(vis_dir, 'vis_data'),
           )
 
+    if save:
+      with open(os.path.join(save_dir, 'summary.pkl'), 'wb') as fp:
+        pickle.dump(summary, fp)
+
     return metrics_mean
+
 
 
 def train_evaluate(
@@ -178,6 +189,7 @@ def train_evaluate(
   fn_to_val = {min: np.inf, max: -np.inf}
   all_train_metrics = defaultdict(list)
   all_eval_metrics = defaultdict(list)
+
   best_metrics_vals = {metric:fn_to_val[metrics_ops[metric]] for metric in metrics_ops}
   best_metrics = dict()
   epoch_start = 0
@@ -204,7 +216,8 @@ def train_evaluate(
         epoch,
         calc_metrics=True,
         display=(epoch % vis_freq==0),
-        vis_dir=os.path.join(exp_dir,'figs',f'train-epoch{epoch}'))
+        vis_dir=os.path.join(exp_dir,'figs',f'train-epoch{epoch}'),
+        )
 
     # append train metrics
     for metric in train_metrics:
@@ -280,10 +293,13 @@ def train_evaluate(
         all_eval_metrics,
         os.path.join(exp_dir, "all_metrics_eval.json")
         )
+
     utils.save_dict_to_json(all_train_metrics,
         os.path.join(exp_dir, "all_metrics_train.json")
         )
+
   return best_metrics
+
 
 
 if __name__ == '__main__':
@@ -311,6 +327,7 @@ if __name__ == '__main__':
   utils.fix_rng_seed(seed)
 
   ### data loaders ###
+  mean_std_loader=None
   if not (args.eval_only or args.test_only):
     train_loader = builder.get_dataloaders(
         cfg['training'].dataloader,
@@ -319,7 +336,6 @@ if __name__ == '__main__':
         shuffle=True,
         )
 
-    mean_std_loader=None
     if cfg['training'].get('calc_mean_std',False):
       mean_std_loader = builder.get_dataloaders(
         cfg['training'].dataloader,
@@ -330,12 +346,10 @@ if __name__ == '__main__':
       mean_std_loader.dataset.do_augment = False
       mean_std_loader.dataset.labelset = ['verts3d','verts3d_rel', 'joints3d_rel']
 
-  if not args.test_only:
-    cfg['visualizing'] = cfg['evaluating']
-    cfg['visualizing']['dataloader'].batch_size = 32
 
+  if not args.test_only:
     vis_loader = builder.get_dataloaders(
-        cfg['visualizing'].dataloader,
+        cfg['evaluating'].dataloader,
         training=False,
         do_augment=False,
         shuffle=True,
@@ -350,13 +364,31 @@ if __name__ == '__main__':
         shuffle=False,
         )
 
+
   if args.test_only:
-    pass #TODO
+    vis_loader = builder.get_dataloaders(
+        cfg['testing'].dataloader,
+        training=False,
+        do_augment=False,
+        shuffle=True,
+        )
+    vis_data = next(iter(vis_loader))
+    vis_loader = None
+
+    test_loader = builder.get_dataloaders(
+        cfg['testing'].dataloader,
+        training=False,
+        do_augment=False,
+        shuffle=False,
+        )
+
 
   ### model ###
   model = builder.get_model(
       cfg['model'],
-      device=device)
+      device=device,
+      )
+
 
   # optimizer
   trainable_parameters = [p for p in model.parameters() if p.requires_grad]
@@ -367,6 +399,7 @@ if __name__ == '__main__':
       trainable_parameters,
       )
 
+
   # scheduler
   scheduler = builder.get_scheduler(
       cfg['training'].get('scheduler', None),
@@ -374,19 +407,24 @@ if __name__ == '__main__':
       optimizer,
       )
 
+
   ### metrics_fns ###
   metrics_fns = builder.get_metrics_fns(cfg['metrics'])
+
 
   # metrics operations
   metrics_ops = cfg['metrics'].get('ops', {'loss':'min'})
   for k,v in metrics_ops.items():
     metrics_ops[k] = min if v=="min" else max
 
+
   ### trainer object ###
   side_fns = lambda x: {
       'verts2joints_fn': x.dataset._verts2joints_fn,
       'mano_fn': x.dataset._mano_fn
       }
+
+
   trainer = builder.get_trainer(
       cfg['model'],
       model,
@@ -395,12 +433,13 @@ if __name__ == '__main__':
       metrics_fns,
       device,
       exp_dir,
-      **side_fns(val_loader if not args.test_only else test_loader),
       mean_std_loader=mean_std_loader,
+      **side_fns(val_loader if not args.test_only else test_loader),
       )
 
+  ######## validate or test ##########
   if args.eval_only or args.test_only:
-    #### validate or test ####
+
     epoch = trainer.restore_model(
         args.restore_file,
         off_scheduler=True,
@@ -410,9 +449,8 @@ if __name__ == '__main__':
         exp_dir,
         f'{"eval_on_" if args.eval_only else "test_on_"}_{args.restore_file[:-3]}_epoch{epoch}')
 
-
     # set loggers 
-    logpath = os.path.join(exp_dir, 'eval-logFile.log')
+    logpath = os.path.join(exp_dir, f'{"eval-logFile.log" if args.eval_only else "test-logFile.log"}')
     utils.set_logger(logpath)
 
     # run
@@ -423,8 +461,10 @@ if __name__ == '__main__':
         epoch=epoch,
         vis_dir=os.path.join(exp_dir,'figs'),
         display=True,
-        calc_metrics=True)
-
+        calc_metrics=True,
+        save=True,
+        save_dir=exp_dir,
+        )
 
     # logging metrics
     logging.info(F'========== {"evaling" if args.eval_only else "testing" } =========')
@@ -437,8 +477,9 @@ if __name__ == '__main__':
         os.path.join(exp_dir, "mean_metrics.json"),
         )
 
+
+  #### training  ####
   else:
-    #### training  ####
 
     # set loggers & writers
     logpath = os.path.join(exp_dir, 'logFile.log')

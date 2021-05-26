@@ -11,9 +11,9 @@
           "name":"supervised_singlehand_img",
           "data":{
             "db_root": "misc/datapath/hand-pose",
+            "split":"train",          #"split from which data should be read",
             #"name":"mini_interhand_v1",
             #"annot_subset":"all",     #"all|human_annot|machine_annot", #INTERHAND
-            "split":"train",          #"train|val|test", "split from which data should be read",
             #"use_mini_dataset": false,
             #"mini_dataset":{"test":["Capture0/ROM07_RT_Finger_Occlusions/cam400488/"]}, 
             #"if mini_dataset dict is empty & use_mini_dataset is True", 
@@ -75,9 +75,9 @@
           "name":"supervised_singlehand_img",
           "data":{
             "db_root": "misc/datapath/hand-pose",
+            "split":"val",          #"split from which data should be read",
             #"name":"mini_interhand_v1",
             #"annot_subset":"all",     #"all|human_annot|machine_annot", #INTERHAND
-            "split":"val",          #"train|val|test", "split from which data should be read",
             #"use_mini_dataset": false,
             #"mini_dataset":{"test":["Capture0/ROM07_RT_Finger_Occlusions/cam400488/"]}, 
             #"if mini_dataset dict is empty & use_mini_dataset is True", 
@@ -104,14 +104,54 @@
             "add_first_last_frame": true,
             #"supervised fraction could be used to turn off supervisory of some frames",
             "augmentation": {}
-            # "same_{} means to have same augmentation in picked sequenced frames"
           }
         }
       }
     }
   },
-  "metrics":{
-    "names":["hand3d"],
-    "ops":{}#{"loss": "min"}
+  "testing":{
+    "dataloader":{
+      "batch_size":32,
+      "workers": 8,
+      "datasets":{
+        #"dictionary config of dataloader {name}",
+        "supervised_singlehand_img":{
+          "name":"supervised_singlehand_img",
+          "data":{
+            "db_root": "misc/datapath/hand-pose",
+            "split":"test",          #"split from which data should be read",
+            #"name":"mini_interhand_v1",
+            #"annot_subset":"all",     #"all|human_annot|machine_annot", #INTERHAND
+            #"use_mini_dataset": false,
+            #"mini_dataset":{"test":["Capture0/ROM07_RT_Finger_Occlusions/cam400488/"]}, 
+            #"if mini_dataset dict is empty & use_mini_dataset is True", 
+            #"json file in './misc would be received",
+            #"images_features":"image_features_{split}.pickle",
+            #"images_features are saved extracted features from a pretrained net",
+            #"ref_handside":"right",   #"left|interacting",
+            "annot_metric": "m",
+            "crop_bbox": false,
+            "crop_factor": 1.2,
+            "res_size": [256,256],
+            "ref_bone": [8,9],
+            "root_joint": 0,
+            "labelset": [
+              "image",
+              "joints3d",
+              "joints3d_rel",
+              "mano_params",
+              "verts3d"],
+            #"label_set would be avaliable_annotation in loader",
+            #"min_len_video":64,  #FILTER SHORT VIDEOS
+            #"nseq frames in loader batch with desired spacing",
+            #"supervise_fraction": 1.0,
+            #"add_first_last_frame": true,
+            #"supervised fraction could be used to turn off supervisory of some frames",
+            "augmentation": {}
+            # "same_{} means to have same augmentation in picked sequenced frames"
+          }
+        }
+      }
+    }
   }
 }

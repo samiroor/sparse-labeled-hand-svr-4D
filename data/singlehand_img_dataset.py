@@ -240,7 +240,7 @@ class ShImgDataset(Dataset):
       root_joint = joints3d[self._root_joint]
       sample[Fls.joints3d_root] = root_joint[None]
       sample[Fls.joints3d_rel] = joints3d - root_joint
-      if verts3d is not None:
+      if verts3d is not None and 'verts3d_rel' in self.labelset:
         sample[Fls.verts3d_rel] = verts3d - root_joint
 
     if 'joints3d_nrm' in self.labelset:
@@ -249,7 +249,7 @@ class ShImgDataset(Dataset):
       sample[Fls.joints3d_root] = root_joint[None]
       sample[Fls.joints3d_scale] = ref_scale
       sample[Fls.joints3d_nrm] = (joints3d - root_joint) / ref_scale
-      if verts3d is not None:
+      if verts3d is not None and 'verts3d_nrm' in self.labelset:
         sample[Fls.verts3d_nrm] = (verts3d - root_joint) / ref_scale
 
     meta = f'{video_id}:{frame}:{sample[Fls.images_paths]}'
