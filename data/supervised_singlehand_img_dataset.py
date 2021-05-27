@@ -22,17 +22,13 @@ class SupervisedShImgDataset(ShImgDataset):
                **kwargs):
     """
     Args:
-      dataset (Data class): specific to each dataset.
-      spacing (int): space between frames of seq.
-      ref_bone (int, int): desired ref bone ids.
-      root_joint (int): desired root joint id.
-      res_size (int, int): desired image resolution.
-      labelset (list): list of some names refer to the desired labels.
-      augmentation (EasyDict): necessary augmentations.
-      do_augment (bool):  do augmentation or not ...
-      training (bool): do training or not ...
-      ref_handside (str) left|right should be matched with annotation side!
+      return a supervised sample
+      (with flag of supervisory status to optional check , it should be always one)
+      return metas: return sample filename along sample
+
+      *len of loader is number of supervised frames!
     """
+
     super().__init__(dataset,
                      res_size,
                      labelset,
@@ -47,13 +43,16 @@ class SupervisedShImgDataset(ShImgDataset):
 
 
   def next_trainitem(self, item):
-    video_frame = self.dataset.list_supervised_videos_frames[item]
-    video_id, frame = int(video_frame.split(':')[0]),int(video_frame.split(':')[-1])
-    # get video object
-    video = self.dataset.videos[video_id]
-    return video, frame, frame in video._supervised_frames, video_id
+    return self.get_supervised_frame(item)
 
 
   def next_valitem(self, item):
     return self.next_trainitem(item)
 
+
+  def get_supervised_frame(self, item):
+    video_frame = self.dataset.list_supervised_videos_frames[item]
+    video_id, frame = int(video_frame.split(':')[0]),int(video_frame.split(':')[-1])
+    # get video object
+    video = self.dataset.videos[video_id]
+    return video, frame, frame in video._supervised_frames, video_id

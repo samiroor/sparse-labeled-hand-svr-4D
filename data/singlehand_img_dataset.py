@@ -32,18 +32,24 @@ class ShImgDataset(Dataset):
     """
     Args:
       dataset (Data class): specific to each dataset.
-      spacing (int): space between frames of seq.
-      ref_bone (int, int): desired ref bone ids.
-      root_joint (int): desired root joint id.
       res_size (int, int): desired image resolution.
       labelset (list): list of some names refer to the desired labels.
       augmentation (EasyDict): necessary augmentations.
       do_augment (bool):  do augmentation or not ...
       training (bool): do training or not ...
-      ref_handside (str) left|right should be matched with annotation side!
 
-      return a sample image (with flag of supervisory status to optional use)
+      _root_joint (int): desired root joint id.
+      _ref_bone (int, int): desired ref bone ids.
+      _ref_handside (str) left|right should be matched with annotation side!
+      _bones (list) list of links between joints [(jn1, jn2), (jn1,jn2) etc]
+      _joints (dict) {'joint_name': joint_id, etc}
+      _annot_metric {provided GT are in "m" | "mm"}
+      _hand_model {mano model to map GT mano params into hand.}
+
+      return a sample  (with flag of supervisory status to optional use)
       return metas: return sample filename along sample
+
+      * len of loader is number of whole frames.
     """
 
     # dataset
@@ -88,15 +94,19 @@ class ShImgDataset(Dataset):
 
 
   def next_trainitem(self, item):
+    return self.get_frame(item)
+
+
+  def next_valitem(self, item):
+    return self.next_trainitem(item)
+
+
+  def get_frame(self, item):
     video_frame = self.dataset.list_videos_frames[item]
     video_id, frame = int(video_frame.split(':')[0]),int(video_frame.split(':')[-1])
     # get video object
     video = self.dataset.videos[video_id]
     return video, frame, frame in video._supervised_frames, video_id
-
-
-  def next_valitem(self, item):
-    return self.next_trainitem(item)
 
 
   def get_sample(self, video, frame, frame_status, video_id, aug={}):

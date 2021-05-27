@@ -16,9 +16,12 @@ from .datasets.interhand26m.mini_interhand_v1 import MiniInterHand_v1
 
 from .singlehand_img_dataset import ShImgDataset
 from .supervised_singlehand_img_dataset import SupervisedShImgDataset
+from .unsupervised_singlehand_img_dataset import UnsupervisedShImgDataset
+from .pair_supervised_unsupervised_singlehand_img_dataset import PairSupUnsupShImgDataset
 
-from .singlehand_seq_dataset import ShSeqDataset
-from .flow_singlehand_seq_dataset import FlowShSeqDataset
+
+#from .singlehand_seq_dataset import ShSeqDataset
+#from .flow_singlehand_seq_dataset import FlowShSeqDataset
 
 
 data_dict = {
@@ -31,8 +34,10 @@ data_dict = {
 dataset_dict = {
     "singlehand_img":ShImgDataset,
     "supervised_singlehand_img":SupervisedShImgDataset,
-    "singlehand_seq":ShSeqDataset,
-    "flow_singlehand_seq":FlowShSeqDataset,
+    "unsupervised_singlehand_img":UnsupervisedShImgDataset,
+    "pair_supervised_unsupervised_singlehand_img":PairSupUnsupShImgDataset,
+    #"singlehand_seq":ShSeqDataset,
+    #"flow_singlehand_seq":FlowShSeqDataset,
     }
 
 
