@@ -35,7 +35,6 @@
               "verts3d"],
             #"label_set would be avaliable_annotation in loader",
             #"min_len_video":64,  #FILTER SHORT VIDEOS
-            #"nseq frames in loader batch with desired spacing",
             "supervise_fraction": 1.0,
             "add_first_last_frame": true,
             #"supervised fraction could be used to turn off supervisory of some frames",
@@ -99,7 +98,6 @@
               "verts3d"],
             #"label_set would be avaliable_annotation in loader",
             #"min_len_video":64,  #FILTER SHORT VIDEOS
-            #"nseq frames in loader batch with desired spacing",
             "supervise_fraction": 1.0,
             "add_first_last_frame": true,
             #"supervised fraction could be used to turn off supervisory of some frames",
@@ -143,7 +141,6 @@
               "verts3d"],
             #"label_set would be avaliable_annotation in loader",
             #"min_len_video":64,  #FILTER SHORT VIDEOS
-            #"nseq frames in loader batch with desired spacing",
             #"supervise_fraction": 1.0,
             #"add_first_last_frame": true,
             #"supervised fraction could be used to turn off supervisory of some frames",
