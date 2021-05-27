@@ -1,0 +1,38 @@
+import torch
+import torch.nn as nn
+from methods.modelutils.layers import ResnetBlockFC, get_activation
+
+class VelocityField(nn.Module):
+  def __init__(self, in_dim=3, out_dim=3, c_dim=512, hidden_size=512,
+               activation='tanh', n_blocks=5, positional_encoder=None):
+    in_dim = in_dim if positional_encoder is None else positional_encoder.get_dim(in_dim)
+    self.n_blocks = n_blocks
+    # TODO: add positional encoder
+    self.positional_encoder = positional_encoder
+    self.fc_p = nn.Linear(in_dim, hidden_size)
+    self.fc_c = nn.ModuleLi([
+      nn.Linear(c_dim, hidden_size) for i in range(n_blocks)])
+
+    # TODO: add ResnetBlockFC
+    self.blocks = nn.ModuleList([
+      ResnetBlockFC(hidden_size) for i in range(n_blocks)
+    ])
+
+    self.fc_out = nn.Linear(hidden_size, self.out_dim)
+    self.activation = get_activation(activation)
+
+  def forward(self, x, cond):
+    """
+    x: [B,V,3]
+    cond: [B,c_dim]
+    """
+    # TODO check if PE works with 3D tensors
+    if self.positional_encoder:
+      x = self.positional_encoder(x)
+    net = self.fc_p(x)
+    for i in range(self.n_blocks):
+      net_c = self.fc_c[i](cond).unsqueeze(1)
+      net = net + net_c
+      net = self.blocks[i](net)
+    out = self.fc_out(self.activation(net))
+    return out
