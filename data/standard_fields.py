@@ -37,7 +37,6 @@ class Fields(object):
   objverts2d = "objverts2d"
   objvis = "objvis"
 
-  images_features = "images_features"
   affinetrans = "affinetrans"
 
   supervised = "supervised" # bool: to be in supervised list or not
@@ -51,6 +50,11 @@ class Fields(object):
   objcorners2d_prim = "objcorners2d_prim"
   objverts3dcan_prim = "objevertscan_prim"
   objcorners3dcan_prim = "objcorners3dcan_prim"
+
+  # features
+  images_features = "images_features" #TODO omit
+  encoder_features = "encoder_features"
+  base_features = "base_features"
 
   # flow loaders
   verts3d_t0 = "verts3d_t0" # verts3d @ t0

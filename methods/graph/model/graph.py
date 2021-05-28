@@ -15,9 +15,8 @@ class Graph(nn.Module):
       graph_head,
       st_head,
       obj_st_head,
-      use_adaptor=True,
       adaptor_path=None,
-      return_graph_features=False,
+      return_base_features=False,
       return_encoder_features=False,
       center_idx=0,
       annot_metric='m',
@@ -36,7 +35,7 @@ class Graph(nn.Module):
     self.st_head = st_head
     self.obj_st_head = obj_st_head
 
-    self.return_graph_features = return_graph_features
+    self.return_base_features = return_base_features
     self.return_encoder_features = return_encoder_features
 
     self.center_idx = center_idx
@@ -45,10 +44,9 @@ class Graph(nn.Module):
     self.trans_factor = trans_factor
     self.off_z = off_z
 
-    self.adaptor = None
-    if use_adaptor:
-      self.adaptor = ManoAdaptor()
-      rec_freeze(self.adaptor)
+    self.adaptor_path = adaptor_path
+    self.adaptor = ManoAdaptor(load_path=self.daptor_path)
+    rec_freeze(self.adaptor)
 
 
   def forward(self, input_batch):
@@ -64,7 +62,7 @@ class Graph(nn.Module):
     graph_features = self.graph_base(features)
     verts3d_rel = self.graph_head(graph_features)
 
-    assert self.adaptor is not None
+    assert self.adaptor is not None, 'Must have adaptor to extract joints'
     # mano adaptor
     if self.adaptor:
       adapt_joints, _ = self.adaptor(verts3d_rel)
@@ -145,9 +143,10 @@ class Graph(nn.Module):
           })
 
     # retur features
-    if self.return_graph_features:
-      output_batch['graph_features'] = graph_features
+    if self.return_base_features:
+      output_batch[Fls.base_features] = graph_features
+
     if self.return_encoder_features:
-      output_batch['encoder_features'] = features
+      output_batch[Fls.encoder_features] = features
 
     return output_batch

@@ -14,24 +14,26 @@ class ManoAdaptor(torch.nn.Module):
         nverts=778,
         ):
         super().__init__()
+
         self.adaptor = torch.nn.Linear(nverts, njoints, bias=False)
+
         if load_path is not None:
             with open(load_path, "rb") as p_f:
                 exp_data = pickle.load(p_f)
                 weights = exp_data["adaptor"]
             regressor = torch.Tensor(weights)
             self.register_buffer("J_regressor", regressor)
+
         else:
             if mano_layer is None:
                 mano_layer = ManoLayer(
-      ncomps=45,
-      use_pca=False,
-      side='right',
-      center_idx=0,
-      flat_hand_mean=False,
-      mano_root='misc/mano_v1_2/models',
-      )
-
+                    ncomps=45,
+                    use_pca=False,
+                    side='right',
+                    center_idx=0,
+                    flat_hand_mean=False,
+                    mano_root='misc/mano_v1_2/models',
+                    )
 
             regressor = mano_layer._buffers["th_J_regressor"]
             tip_reg = regressor.new_zeros(5, regressor.shape[1])
@@ -44,6 +46,7 @@ class ManoAdaptor(torch.nn.Module):
                 [0, 13, 14, 15, 16, 1, 2, 3, 17, 4, 5, 6, 18, 10, 11, 12, 19, 7, 8, 9, 20]
             ]
             self.register_buffer("J_regressor", reordered_reg)
+
         self.adaptor.weight.data = self.J_regressor
 
     def forward(self, inp):

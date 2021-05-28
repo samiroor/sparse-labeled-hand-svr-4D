@@ -1,10 +1,12 @@
 from torch import nn
 from manopth.manolayer import ManoLayer
 
-from methods.modelutils import encoders, layers
 
+import utils
+from methods.modelutils import encoders, layers
 from methods.obman.model.obman import ObMan
 from methods.obman.trainer import ObManTrainer
+
 
 encoder_dict = {'resnet18': encoders.Resnet18}
 mano_base_dict = {'fcs': layers.fcs}
@@ -25,9 +27,8 @@ def get_model(
   c_dim = cfg.get('c_dim', 512) # encoder output dim
   h_dim = cfg.get('h_dim', 512) # pose & shape head input dim
 
-  return_mano_features = cfg.get('return_mano_features', False)
+  return_base_features = cfg.get('return_base_features', False)
   return_encoder_features = cfg.get('return_encoder_features', False)
-  use_adaptor = cfg.get('use_adaptor', False)
   adaptor_path = cfg.get('adaptor_path', None)
 
   annot_metric = cfg.get('annot_metric', 'm')
@@ -113,7 +114,7 @@ def get_model(
   st_head = st_head_dict[st_head](**st_head_kwargs)
   obj_st_head = st_head_dict[obj_st_head](**obj_st_head_kwargs) if obj_st_head is not None else None
 
-  # create model
+  ### create model ####
   model = ObMan(
       encoder=encoder,
       mano_base=mano_base,
@@ -126,14 +127,33 @@ def get_model(
       scale_factor=scale_factor,
       trans_factor=trans_factor,
       off_z=off_z,
-      return_mano_features=return_mano_features,
+      return_base_features=return_base_features,
       return_encoder_features=return_encoder_features,
-      use_adaptor=use_adaptor,
       adaptor_path=adaptor_path,
       annot_metric=annot_metric,
       **kwargs,
       )
   model = nn.DataParallel(model).to(device)
+
+  ### load pretrained ####
+  pretrained_file = cfg.get('pretained_file', None)
+  if pretrained_file:
+    utils.load_checkpoint(pretrained_file, model)
+    print(f'pretrained weight from {pretrained_file} is loaded.')
+
+  #### freeze modules ####
+  for module, part_name in [(model.module.encoder,'encoder'),
+                            (model.module.mano_base,'mano_base'),
+                            (model.module.R_head,'R_head'),
+                            (model.module.pose_head,'pose_head'),
+                            (model.module.st_head,'st_head'),
+                            (model.module.obj_st_head, 'obj_st_head')]:
+    if cfg.freeze.get(part_name, False):
+      for name,p in module.named_parameters():
+        p.requires_grad = False
+        print(f'{name} is freezed.')
+
+
   return model
 
 

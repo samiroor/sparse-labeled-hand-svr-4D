@@ -1,10 +1,9 @@
 from torch import nn
 
+import utils
 from methods.modelutils import encoders, layers
-
 from methods.graph.model.graph import Graph
 from methods.graph.model.graph_head import GraphHead
-
 from methods.graph.trainer import GraphTrainer
 
 
@@ -26,9 +25,8 @@ def get_model(
   c_dim = cfg.get('c_dim', 512) # encoder output dim
   h_dim = cfg.get('h_dim', 512) # graph head input dim
 
-  return_graph_features = cfg.get('return_graph_features', False)
+  return_base_features = cfg.get('return_base_features', False)
   return_encoder_features = cfg.get('return_encoder_features', False)
-  use_adaptor = cfg.get('use_adaptor', True)
   adaptor_path = cfg.get('adaptor_path', None)
 
   annot_metric = cfg.get('annot_metric', 'm')
@@ -104,7 +102,7 @@ def get_model(
       device=device,
       )
 
-  # create model
+  ### create model ###
   model = Graph(
       encoder=encoder,
       graph_base=graph_base,
@@ -114,14 +112,31 @@ def get_model(
       scale_factor=scale_factor,
       trans_factor=trans_factor,
       off_z=off_z,
-      return_graph_features=return_graph_features,
+      return_base_features=return_base_features,
       return_encoder_features=return_encoder_features,
-      use_adaptor=use_adaptor,
       adaptor_path=adaptor_path,
       annot_metric=annot_metric,
       **kwargs,
       )
   model = nn.DataParallel(model).to(device)
+
+  ### load pretrained ###
+  pretrained_file = cfg.get('pretained_file', None)
+  if pretrained_file:
+    utils.load_checkpoint(pretrained_file, model)
+    print(f'pretrained weight from {pretrained_file} is loaded.')
+
+  ### freeze modules ###
+  for module, part_name in [(model.module.encoder,'encoder'),
+                            (model.module.graph_base,'graph_base'),
+                            (model.module.graph_head,'graph_head'),
+                            (model.module.st_head,'st_head'),
+                            (model.module.obj_st_head, 'obj_st_head')]:
+    if cfg.freeze.get(part_name, False):
+      for name,p in module.named_parameters():
+        p.requires_grad = False
+        print(f'{name} is freezed.')
+ 
   return model
 
 

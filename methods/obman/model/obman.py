@@ -18,9 +18,8 @@ class ObMan(nn.Module):
       shape_head,
       st_head,
       obj_st_head,
-      use_adaptor=False,
       adaptor_path=None,
-      return_mano_features=False,
+      return_base_features=False,
       return_encoder_features=False,
       annot_metric='m',
       scale_factor=0.0001,
@@ -42,7 +41,7 @@ class ObMan(nn.Module):
     self.st_head = st_head
     self.obj_st_head = obj_st_head
 
-    self.return_mano_features = return_mano_features
+    self.return_base_features = return_base_features
     self.return_encoder_features = return_encoder_features
 
     self.annot_metric = annot_metric
@@ -50,14 +49,9 @@ class ObMan(nn.Module):
     self.trans_factor = trans_factor
     self.off_z = off_z
 
-    self.adaptor = None
-    if use_adaptor:
-      assert adaptor_path is not None,"Expected an adaptor path."
-      self.adaptor = ManoAdaptor(
-          self.manolayer,
-          adaptor_path,
-          )
-      rec_freeze(self.adaptor)
+    self.adaptor_path = adaptor_path
+    self.adaptor = ManoAdaptor(load_path=self.daptor_path)
+    rec_freeze(self.adaptor)
 
 
   def forward(self, input_batch):
@@ -83,7 +77,7 @@ class ObMan(nn.Module):
         )
 
     # mano adaptor
-    if self.adaptor:
+    if self.adaptor_path is not None:
       adapt_joints, _ = self.adaptor(verts3d_rel)
       adapt_joints = adapt_joints.transpose(1, 2)
       final_joints = adapt_joints - adapt_joints[:, self.manolayer.center_idx].unsqueeze(1)
@@ -169,11 +163,12 @@ class ObMan(nn.Module):
           Fls.objcorners2d: obj_out_dict['objcorners2d'],
           })
 
-    # retur features
-    if self.return_mano_features:
-      output_batch['mano_features'] = mano_features
+    # return features
+    if self.return_base_features:
+      output_batch[Fls.base_features] = mano_features
+
     if self.return_encoder_features:
-      output_batch['encoder_features'] = features
+      output_batch[Fls.encoder_features] = features
 
     return output_batch
 
