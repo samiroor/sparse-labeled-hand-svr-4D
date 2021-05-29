@@ -6,6 +6,8 @@ from tqdm import tqdm
 
 from collections import defaultdict
 
+
+
 class Video:
   def __init__(self,
                video_dir,
@@ -71,12 +73,15 @@ class Video:
                                                                         len(self._supervised_frames),
                                                                         len(self._unsupervised_frames)))
 
+
   def is_strong(self, frame, spacing):
     return (self.add_first_last_frame and (frame == 0 or frame == self._num_frames - 1)) or \
         (frame % spacing) == 0
 
+
   def has_more_frames(self, frame):
     return frame < self._num_frames - 1
+
 
   def get_next_frames(self, frame, n, spacing=1):
     """
@@ -92,6 +97,7 @@ class Video:
       frame += spacing
     return frames, frame
 
+
   def get_prior_frames(self, frame, n, spacing=1):
     """
       return "<=n  sequenced frames" ending with a specified "frame" (including "frame").
@@ -106,7 +112,8 @@ class Video:
       frame -= spacing
     return frames, frame
 
-  def get_next_unsupervised_frames(self, frame, n):
+
+  def get_next_unsupervised_frames(self, frame, n, spacing=1):
     """
       return "<=n seqquenced  Unsupervised frames" starting from a specific "frame" 
       (including frame if applicapable)!
@@ -118,10 +125,11 @@ class Video:
         break
       if frame in unsupervised:
         frames.append(frame)
-      frame += 1
+      frame += spacing
     return frames, frame
 
-  def get_prior_unsupervised_frames(self, frame, n):
+
+  def get_prior_unsupervised_frames(self, frame, n, spacing=1):
     """
       return "<=n seqquenced  Unsupervised frames" ending with a specific "frame" 
       (including frame if applicapable)!
@@ -133,69 +141,9 @@ class Video:
         break
       if frame in unsupervised:
         frames.append(frame)
-      frame -= 1
+      frame -= spacing
     return frames, frame
 
-  def get_intermediate_unsupervised_frames(self, frame1, frame2, n, spacing=None):
-    """
-      return "<=n seqquenced  Unsupervised equidistant frames between two specific "frames"
-      (including specific frames if applicapable)!
-    """
-    unsupervised = self._unsupervised_frames
-    flags = [(lambda id: frame1 <= id <= frame2)(id) for id in unsupervised]
-    valid_unsupervised = np.array(unsupervised)[flags]
-
-    if spacing is None:
-      spacing = int((valid_unsupervised.max() - valid_unsupervised.min()) // n)
-
-    frames = []
-    frame = frame1
-    while len(frames) < n :
-      if frame > valid_unsupervised.max():
-        break
-      if frame in valid_unsupervised:
-        frames.append(frame)
-      frame += spacing
-    return frames, frame
-
-  def get_next_supervised_frames(self, frame, n):
-    """
-      return "<=n seqquenced  supervised frames" starting from a specific "frame"
-      (including frame if applicapable)!
-    """
-    frames = []
-    supervised = self._supervised_frames
-    while len(frames) < n:
-      if frame > max(supervised):
-        break
-      if frame in supervised:
-        frames.append(frame)
-      frame += 1
-    return frames, frame
-
-  def get_prior_supervised_frames(self, frame, n):
-    """
-      return "<=n seqquenced  supervised frames" ending with a specific "frame"
-      (including frame if applicapable)!
-    """
-    frames = []
-    supervised = self._supervised_frames
-    while len(frames) < n:
-      if frame < min(supervised):
-        break
-      if frame in supervised:
-        frames.append(frame)
-      frame -= 1
-    return frames, frame
-
-  def get_close_supervised_frames(self, frame, n):
-    """
-      return "<=n Close arbitrary Supervised frames" to a specified "frame"!
-    """
-    supervised = np.array(self._supervised_frames)
-    d = np.abs(supervised - frame)
-    frames = supervised[np.argsort(d)][:n]
-    return list(frames)
 
   def get_data_dict(self, handmodel=None, ref_handside=None):
     summary = list()
@@ -218,11 +166,13 @@ class Video:
 
     return summary
 
+
   def get_side(self, frame, **kwargs):
     """
     return hand side (str)
     """
     pass
+
 
   def get_visibility(self, frame, **kwargs):
     """
@@ -230,8 +180,10 @@ class Video:
     """
     pass
 
+
   def get_image_path(self, frame):
     pass
+
 
   def get_image(self, frame):
     """
@@ -239,11 +191,13 @@ class Video:
     """
     pass
 
+
   def get_mask(self, frame):
     """
       return hand mask
     """
     pass
+
 
   def get_bb(self, frame):
     """
@@ -251,11 +205,13 @@ class Video:
     """
     pass
 
+
   def get_center_scale(self, frame):
     """
       return center of hand bbox ,cropping_scale max(bbox_w,bbox_h)*crop_factor
     """
     pass
+
 
   def get_camintr(self, frame):
     """
@@ -263,17 +219,21 @@ class Video:
     """
     pass
 
+
   def get_joints3d(self, frame,**kwargs):
     pass
 
+
   def get_joints2d(self, frame,**kwargs):
     pass
+
 
   def get_mano(self, frame,**kwargs):
     """
       return pose, shape of that frame
     """
     pass
+
 
   def get_verts3d(self, frame, handmodel, **kwargs):
     """
@@ -283,30 +243,39 @@ class Video:
     """
     pass
 
+
   # OBJECT Properties
   def get_obj_textures(self, frame):
     pass
 
+
   def get_obj_faces(self, frame):
     pass
+
 
   def get_obj_verts3d_can(self, frame, no_center=False):
     pass
 
+
   def get_obj_verts3d(self, frame):
     pass
+
 
   def get_obj_verts2d(self, frame):
     pass
 
+
   def get_objvis(self, frame):
     pass
+
 
   def get_obj_corners3d_can(self, frame):
     pass
 
+
   def get_obj_corners3d(self, frame):
     pass
+
 
   def get_obj_corners2d(self, frame):
     pass
