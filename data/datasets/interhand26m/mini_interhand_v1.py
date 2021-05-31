@@ -35,10 +35,13 @@ class MiniInterHand_v1(Videos):
   def __init__(self,
                cfg,
                split="train",
+               supervise_fraction=1.0,
+               add_first_last_frame=True,
                mano_root=None,
                images_features=None,
                val_idx=25,
-               **kwargs):
+               **kwargs,
+               ):
     """
     Args:
       cfg (EasyDict): of dataset cfg. Must have the following items:
@@ -46,7 +49,7 @@ class MiniInterHand_v1(Videos):
         - annot_metric (str): deesired metric of annotations ("m"|"mm").
         - crop_bbox (bool): cropping frames around the hand.
         - crop_factor (float): desired tightness of cropped frames around the hand.
-        - supervise_fractions (float): limit the annotations availablity.
+        - supervise_fraction (float): limit the annotations availablity.
         - add_first_last_frame (bool): to include first-last frames in supervised set frames
         - use_mini_dataset (bool): use mini_dataset or not
         - mini_dataset (EasyDict):
@@ -59,8 +62,10 @@ class MiniInterHand_v1(Videos):
       images_features (dict): {"video_id:frame_id:filename": corresponding features}
     """
     super().__init__()
-    self.cfg = cfg
     self.split = split
+    self.supervise_fraction = supervise_fraction
+    self.add_first_last_frame = add_first_last_frame
+    self.images_features = images_features
 
     # get data root; video_folders; object_meshes; hand_model
     self.db_root = os.path.join(cfg.db_root, "InterHand2.6M/mini-interhand30fps-v1")
@@ -137,6 +142,7 @@ class MiniInterHand_v1(Videos):
         )
     with open(cache_path, 'rb') as f:
       annots = pickle.load(f)
+
     self.joints = annots['joints']
     self.cameras = annots['cameras']
     self.mano_params = annots['mano_params']
@@ -149,6 +155,9 @@ class MiniInterHand_v1(Videos):
       video_names = annots['video_names'] # len(annots) == len(video_names)
 
     video_folders  = dict(filter(lambda elem:elem[0] in video_names, annots['video_folders'].items()))
+    # arrange frames of each video
+    for video_dir in video_folders:
+      video_folders[video_dir] = sorted(video_folders[video_dir], key=lambda elem:int(elem['frame_idx']))
 
     # create video objects
     self.videos = list()
@@ -168,8 +177,8 @@ class MiniInterHand_v1(Videos):
                                         annot_metric=self._annot_metric,
                                         crop_bbox=self._crop_bbox,
                                         crop_factor=self._crop_factor,
-                                        supervise_fraction=cfg.get('supervise_fraction',1.0),
-                                        add_first_last_frame=cfg.get('add_first_last_frame',True)))
+                                        supervise_fraction=self.supervise_fraction,
+                                        add_first_last_frame=self.add_first_last_frame))
     # release memory 
     self.joints = None
     self.cameras = None
@@ -192,9 +201,8 @@ class MiniInterHand_v1(Videos):
             num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
 
     # images features
-    self.images_features = images_features
-    if images_features is not None:
-      assert len(images_features)==len(self.list_videos_frames),"Images features are not matched with data."
+    if self.images_features is not None:
+      assert len(self.images_features)==len(self.list_videos_frames),"Images features are not matched with data."
 
   def ann2name(self, ann):
     return f"Capture{ann['capture']}/{ann['seq_name']}/cam{ann['camera']}/"

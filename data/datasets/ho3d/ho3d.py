@@ -10,11 +10,18 @@ from ..torch_handmodel import Torch_HandModel
 
 
 class HO3D(Videos):
-  def __init__(self,
-              cfg,
-              split="train",
-              mano_root=None,
-              images_features=None):
+  def __init__(
+      self,
+      cfg,
+      split="train",
+      use_mini_dataset=False,
+      mini_dataset={},
+      supervise_fraction=1.0,
+      add_first_last_frame=True,
+      mano_root=None,
+      images_features=None,
+      **kwargs,
+      ):
     """
     Args:
       cfg (EasyDict): of dataset cfg. Must have the following items:
@@ -36,8 +43,13 @@ class HO3D(Videos):
       images_features (dict): {"video_id:frame_id:filename": corresponding features}
     """
     super(HO3D, self).__init__()
-    self.cfg = cfg
     self.split = split
+    self.use_mini_dataset = use_mini_dataset
+    self.mini_dataset = mini_dataset
+    self.supervise_fraction = supervise_fraction
+    self.add_first_last_frame = add_first_last_frame
+    self.images_features = images_features
+
 
     # get data root; video_folders; object_meshes; hand_model
     self.db_root = os.path.join(cfg.db_root, "HO3D", "HO3D_v2")
@@ -99,8 +111,8 @@ class HO3D(Videos):
                              annot_metric=self._annot_metric,
                              crop_bbox=self._crop_bbox,
                              crop_factor=self._crop_factor,
-                             supervise_fraction=cfg.get('supervise_fraction', 1.0),
-                             add_first_last_frame=cfg.get('add_first_last_frame', True)) for
+                             supervise_fraction=self.supervise_fraction,
+                             add_first_last_frame=self.add_first_last_frame) for
                              video_dir,anns in video_folders.items()]
 
     # list of ids ['video_id:frame_id', ...]
@@ -119,14 +131,13 @@ class HO3D(Videos):
             num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
 
     # images features
-    self.images_features = images_features
-    if images_features is not None:
-      assert len(images_features)==len(self.list_videos_frames),"Images features are not matched with data."
+    if self.images_features is not None:
+      assert len(self.images_features)==len(self.list_videos_frames),"Images features are not matched with data."
 
   def get_video_folders(self):
     # mini dataset [train/seq]
-    if self.cfg.get('use_mini_dataset', False):
-      video_dirs = [os.path.join(self.db_root, video_dir) for video_dir in self.cfg.mini_dataset[self.split]]
+    if self.use_mini_dataset:
+      video_dirs = [os.path.join(self.db_root, video_dir) for video_dir in self.mini_dataset[self.split]]
 
     # get all dirs
     elif self.split=="train" or self.split == "trainval":

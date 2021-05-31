@@ -14,16 +14,15 @@ Pair Supervised frame Unsupervised frame Single Hand Img dataset!
 class PairSupUnsupShImgDataset(SupervisedShImgDataset):
   def __init__(self,
                dataset,
-               res_size,
                labelset,
-               spacing,
-               augmentation,
+               gap=1,
                do_augment=False,
+               augmentation={},
                training=False,
                **kwargs):
     """
     Args:
-      spacing (int)|tuple: space between supervised frame and selected unsupervised frame.
+      gap (int)|tuple: distance between selected supervised frame and selected unsupervised frame.
 
       return a supervised sample and unsupervised sample
       (with flag of supervisory status to optional check )
@@ -33,18 +32,20 @@ class PairSupUnsupShImgDataset(SupervisedShImgDataset):
 
     """
     super().__init__(dataset,
-                     res_size,
                      labelset,
-                     augmentation,
                      do_augment=do_augment,
+                     augmentation=augmentation,
                      training=training,
                      **kwargs)
 
-    self.spacing = spacing
+    self.gap = gap # for eval it is not a tuple!
 
+  def __getitem__(self, item):
 
-  def __getitem__(self):
-    video, supervised_frame, unsupervised_frame, video_id = self.next_trainitem(item) if self.training  else self.next_valitem(item)
+    if self.training:
+      video, supervised_frame, unsupervised_frame, video_id = self.next_trainitem(item)
+    else:
+      video, supervised_frame, unsupervised_frame, video_id = self.next_valitem(item)
 
     supervised_sample, supervised_meta = self.get_sample(video, supervised_frame, 1, video_id)
     supervised_sample.pop('aug')
@@ -61,22 +62,59 @@ class PairSupUnsupShImgDataset(SupervisedShImgDataset):
   def next_trainitem(self, item):
     video, supervised_frame, frame_status, video_id = self.get_supervised_frame(item)
     assert frame_status == 1,'Expected to be picked from supervised collection.'
-    unsupervised_frame, frame_status = self.select_unsupervised_frame(video, supervised_frame)
+
+    gap = self.gap if isinstance(self.gap, int) else random.randint(self.gap[0], self.gap[1])
+
+    unsupervised_frame, frame_status = self.pass_unsupervised_frame(
+        video,
+        supervised_frame,
+        gap=gap,
+        flag=random.random(),
+        )
+
     assert frame_status == 0,'Expected to be picked from unsupervised collection.'
+    #print('#item number')
+    #print(item)
+    #print('#number of frames')
+    #print(video._num_frames)
+    #print('#supervised_frame')
+    #print(supervised_frame)
+    #print('#unsupervised_frame')
+    #print(unsupervised_frame)
     return video, supervised_frame, unsupervised_frame, video_id
 
 
   def next_valitem(self, item):
-    return self.next_trainitem(item)
+    video, supervised_frame, frame_status, video_id = self.get_supervised_frame(item)
+    assert frame_status == 1,'Expected to be picked from supervised collection.'
+
+    assert isinstance(self.gap, int), 'Expected fixed gaps for evaluation'
+    unsupervised_frame, frame_status = self.pass_unsupervised_frame(
+        video,
+        supervised_frame,
+        gap=self.gap,
+        flag=1,
+        )
+    assert frame_status == 0,'Expected to be picked from unsupervised collection.'
+    return video, supervised_frame, unsupervised_frame, video_id
 
 
-  def select_unsupervised_frame(self, video, frame, len_seq=1):
-    spacing = self.spacing if isinstance(self.spacing, int) else random.randint(self.spacing[0], self.spacing[1])
+  def pass_unsupervised_frame(self, video, frame, gap, flag):
+    """
+      To have correct setting, note that 
+      supervised frames are set as Start + Every 1/supervisory_fraction frames + End
+      so to have an unsupervised frame picked logically, given spacing should satisfy
+      "spacing < 1/supervisory_fraction"
+    """
+    if flag > 0.5:
+      frames, _ = video.get_next_unsupervised_frames(frame + gap, n=1, spacing=1)
+      if len(frames) < 1:
+        frames,_ = video.get_prior_unsupervised_frames(frame - gap, n=1, spacing=1)
 
-    frames, _ = video.get_next_unsupervised_frames(frame, len_seq, spacing)
+    else:
+      frames,_ = video.get_prior_unsupervised_frames(frame - gap, n=1, spacing=1)
+      if len(frames) < 1:
+        frames, _ = video.get_next_unsupervised_frames(frame + gap, n=1, spacing=1)
 
-    if len(frames) < len_seq:
-      pad,_ = video.get_prior_frames(frame-1, len_seq - len(frames), spacing)
-      frames.extend(pad)
-
-    return frames[-1], frames[-1] in video._supervised_frames
+    assert len(frames) !=0, "Expected at least one unsupervised frame!"
+    return frames[0], frames[0] in video._supervised_frames

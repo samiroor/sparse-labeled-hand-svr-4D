@@ -20,9 +20,6 @@ from .unsupervised_singlehand_img_dataset import UnsupervisedShImgDataset
 from .pair_supervised_unsupervised_singlehand_img_dataset import PairSupUnsupShImgDataset
 
 
-#from .singlehand_seq_dataset import ShSeqDataset
-#from .flow_singlehand_seq_dataset import FlowShSeqDataset
-
 
 data_dict = {
     'ho3d':HO3D,
@@ -36,29 +33,35 @@ dataset_dict = {
     "supervised_singlehand_img":SupervisedShImgDataset,
     "unsupervised_singlehand_img":UnsupervisedShImgDataset,
     "pair_supervised_unsupervised_singlehand_img":PairSupUnsupShImgDataset,
-    #"singlehand_seq":ShSeqDataset,
-    #"flow_singlehand_seq":FlowShSeqDataset,
     }
+
 
 
 def worker_init_fn(worker_id):
   np.random.seed(np.random.get_state()[1][0] + worker_id)
 
 
+
 def select_data(
     cfg,
+    split='train',
+    use_mini_dataset=False,
+    mini_dataset={},
+    supervise_fraction=1.0,
+    add_first_last_frame=True,
+    images_features=None,
     mano_root='misc/mano_v1_2/models',
+    **kwargs,
     ):
+
   """
   Read a specific video dataset.
   Args:
-    cfg (EasyDict)
-    mano_root (str)
+    cfg : data specification (Ho3D InterHand etc)
+
   """
+
   # subset of data
-  split = cfg.split
-  use_mini_dataset = cfg.get("use_mini_dataset", False)
-  mini_dataset = cfg.get('mini_dataset', {})
   if use_mini_dataset:
     if not bool(mini_dataset):
       subset_file = f"misc/mini_{cfg.name}_v1.json"
@@ -66,11 +69,10 @@ def select_data(
       with open(subset_file, 'r') as f:
         subset = EasyDict(json.load(f))
         assert split in subset, f"Expected {split} in {subset_file}."
-        cfg.mini_dataset = EasyDict({split: subset[split]})
+        mini_dataset = EasyDict({split: subset[split]})
 
   # image features
-  images_features = cfg.get("images_features", None)
-  if images_features:
+  if images_features is not None:
     feature_file = (images_features).format(split=split)
     assert os.path.exists(feature_file), f'Not found "{feature_file}".'
     with open(feature_file, 'rb') as f:
@@ -81,8 +83,14 @@ def select_data(
     dataset = data_dict[cfg.name](
         cfg,
         split=split,
+        use_mini_dataset=use_mini_dataset,
+        mini_dataset=mini_dataset,
+        supervise_fraction=supervise_fraction,
+        add_first_last_frame=add_first_last_frame,
         mano_root=mano_root,
-        images_features=images_features)
+        images_features=images_features,
+        **kwargs,
+        )
   else:
     raise NotImplementedError(f'Dataset name {cfg.name} is not defined yet')
   return dataset
@@ -90,31 +98,47 @@ def select_data(
 
 def get_dataset(
     cfgs,
+    data_cfg,
+    augmentation_cfg,
     mano_root,
     training,
-    do_augment,
-    **kwargs):
+    **kwargs,
+    ):
+
   """
     Args :
       *cfgs (EasyDict) datasets_config
         - cfg (EasyDict) dataset_config
         - cfg (EasyDict) dataset_config
+      *data_cfg (Easydict) data specification
+      *augmentation_cfg (Easydict) data specification
+
   """
+
   datasets = []
-  for _ in cfgs:
-    cfg = cfgs[_]
-    if cfg.name in dataset_dict:
-      dataset = dataset_dict[cfg.name](
+  for dataset_name in cfgs:
+    cfg = cfgs[dataset_name]
+    if dataset_name in dataset_dict:
+      dataset = dataset_dict[dataset_name](
           select_data(
-            cfg.data,
+            data_cfg,
+            split=cfg.get('split','train'),
+            use_mini_dataset=cfg.get('use_mini_dataset', False),
+            mini_dataset=cfg.get('mini_dataset', {}),
+            supervise_fraction=cfg.get('supervise_fraction', 1.0),
+            add_first_last_frame=cfg.get('add_first_last_frame',True),
+            images_features=cfg.get('images_features',None),
             mano_root=mano_root,
             ),
-          do_augment=do_augment,
+          labelset=cfg.get('labelset',{}),
+          do_augment=cfg.get('do_augment', False),
+          augmentation=augmentation_cfg,
           training=training,
-          **cfg.data,
-          **kwargs)
+          gap=cfg.get('gap',1),
+          **kwargs,
+          )
     else:
-      raise NotImplementedError(f"{cfg.name}")
+      raise NotImplementedError(f"{dataset_name}")
     datasets.append(dataset)
 
   if len(datasets) > 1:
@@ -123,13 +147,17 @@ def get_dataset(
     return datasets[0]
 
 
+
 def get_dataloaders(
     cfg,
+    data_cfg,
+    augmentation_cfg,
     mano_root='misc/mano_v1_2/models',
-    shuffle=False,
     training=False,
-    do_augment=False,
-    **kwargs):
+    shuffle=False,
+    **kwargs,
+    ):
+
   """
     Args :
       cfg (EasyDict) : dataloader_config
@@ -140,17 +168,22 @@ def get_dataloaders(
           * ...
   """
 
-  dataset = get_dataset(cfg.datasets,
-                        mano_root=mano_root,
-                        training=training,
-                        do_augment=do_augment,
-                        **kwargs)
+  dataset = get_dataset(
+      cfgs=cfg.get('datasets',{}),
+      data_cfg=data_cfg,
+      augmentation_cfg=augmentation_cfg,
+      mano_root=mano_root,
+      training=training,
+      **kwargs,
+      )
+
   dataloader = torch.utils.data.DataLoader(dataset=dataset,
-                                           batch_size=cfg.batch_size,
-                                           num_workers=cfg.workers,
+                                           batch_size=cfg.get('batch_size',8),
+                                           num_workers=cfg.get('workers',0),
                                            collate_fn=collate.meshreg_collate,
                                            worker_init_fn=worker_init_fn,
                                            shuffle=shuffle,
                                            drop_last=False,
-                                           pin_memory=True)
+                                           pin_memory=True,
+                                           )
   return dataloader

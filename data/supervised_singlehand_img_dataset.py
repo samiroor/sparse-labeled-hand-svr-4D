@@ -14,10 +14,9 @@ from .singlehand_img_dataset import ShImgDataset
 class SupervisedShImgDataset(ShImgDataset):
   def __init__(self,
                dataset,
-               res_size,
                labelset,
-               augmentation,
                do_augment=False,
+               augmentation={},
                training=False,
                **kwargs):
     """
@@ -30,10 +29,9 @@ class SupervisedShImgDataset(ShImgDataset):
     """
 
     super().__init__(dataset,
-                     res_size,
                      labelset,
-                     augmentation,
                      do_augment=do_augment,
+                     augmentation=augmentation,
                      training=training,
                      **kwargs)
 
@@ -52,6 +50,7 @@ class SupervisedShImgDataset(ShImgDataset):
 
   def get_supervised_frame(self, item):
     video_frame = self.dataset.list_supervised_videos_frames[item]
+
     video_id, frame = int(video_frame.split(':')[0]),int(video_frame.split(':')[-1])
     # get video object
     video = self.dataset.videos[video_id]

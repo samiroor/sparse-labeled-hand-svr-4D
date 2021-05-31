@@ -11,7 +11,19 @@ from ..torch_handmodel import Torch_HandModel
 
 
 class FPHAB(Videos):
-  def __init__(self, cfg, split="train", mano_root=None, images_features=None):
+  def __init__(
+      self,
+      cfg,
+      split="train",
+      use_mini_dataset=False,
+      mini_dataset={},
+      supervise_fraction=1.0,
+      add_first_last_frame=True,
+      mano_root=None,
+      images_features=None,
+      **kwargs,
+      ):
+
     """
     Args:
       cfg (EasyDict): of dataset cfg. Must have the following items:
@@ -32,8 +44,13 @@ class FPHAB(Videos):
       images_features (dict): {"video_id:frame_id": corresponding features}
     """
     super(FPHAB, self).__init__()
-    self.cfg = cfg
     self.split = split
+    self.use_mini_dataset = use_mini_dataset
+    self.mini_dataset = mini_dataset
+    self.supervise_fraction = supervise_fraction
+    self.add_first_last_frame = add_first_last_frame
+    self.images_features = images_features
+
 
     # get data root; video_folders; object_meshes; hand_model
     self.filter_object = None
@@ -131,8 +148,8 @@ class FPHAB(Videos):
                              annot_metric=self._annot_metric,
                              crop_bbox=self._crop_bbox,
                              crop_factor=self._crop_factor,
-                             supervise_fraction=cfg.get('supervise_fraction',1.0),
-                             add_first_last_frame=cfg.get('add_first_last_frame',True))  for video_dir in video_folders]
+                             supervise_fraction=self.supervise_fraction,
+                             add_first_last_frame=self.add_first_last_frame)  for video_dir in video_folders]
 
     # list of ids  ['vid_id:frm_id', ...]
     self.list_videos_frames = ['{}:{}'.format(i,f) for i, v in enumerate(self.videos) for f in v._all_frames]
@@ -150,9 +167,8 @@ class FPHAB(Videos):
             num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
 
     # features
-    self.images_features = images_features
-    if images_features is not None:
-      assert len(images_features)==len(self.list_videos_frames),"Images features are not matched with data."
+    if self.images_features is not None:
+      assert len(self.images_features)==len(self.list_videos_frames),"Images features are not matched with data."
 
   def get_video_folders(self):
     # split mode (actions, subjects)
@@ -186,8 +202,8 @@ class FPHAB(Videos):
       video_dirs.append(os.path.join(subject, action_name, action_seq_idx))
 
     # mini dataset
-    if self.cfg.get('use_mini_dataset',False):
-      video_dirs = self.cfg.mini_dataset[self.split] #subject/action_name/action_seq_idx
+    if self.use_mini_dataset:
+      video_dirs = self.mini_dataset[self.split] #subject/action_name/action_seq_idx
 
     # threshold length of video
     if self.min_len_video > 0:

@@ -35,10 +35,16 @@ class InterHand(Videos):
   def __init__(self,
                cfg,
                split="train",
+               use_mini_dataset=False,
+               mini_dataset={},
+               supervise_fraction=1.0,
+               add_first_last_frame=True,
                mano_root=None,
                images_features=None,
                use_cache=True,
-               cache_folder='cache/interhand2.6m_30fps'):
+               cache_folder='cache/interhand2.6m_30fps',
+               **kwargs,
+               ):
     """
     Args:
       cfg (EasyDict): of dataset cfg. Must have the following items:
@@ -49,7 +55,7 @@ class InterHand(Videos):
         - annot_metric (str): deesired metric of annotations ("m"|"mm").
         - crop_bbox (bool): cropping frames around the hand.
         - crop_factor (float): desired tightness of cropped frames around the hand.
-        - supervise_fractions (float): limit the annotations availablity.
+        - supervise_fraction (float): limit the annotations availablity.
         - add_first_last_frame (bool): to include first-last frames in supervised set frames
         - use_mini_dataset (bool): use mini_dataset or not
         - mini_dataset (EasyDict):
@@ -62,10 +68,16 @@ class InterHand(Videos):
       images_features (dict): {"video_id:frame_id:filename": corresponding features}
     """
     super(InterHand, self).__init__()
-    self.cfg = cfg
-    self.split = split
 
-    # get data root; video_folders; object_meshes; hand_model
+    self.split = split
+    self.use_mini_dataset = use_mini_dataset
+    self.mini_dataset = mini_dataset
+    self.supervise_fraction = supervise_fraction
+    self.add_first_last_frame = add_first_last_frame
+    self.images_features = images_features
+
+
+    # get data 
     self.db_root = os.path.join(cfg.db_root, "InterHand2.6M/InterHand2.6M_30fps_batch1")
     self.annot_subset = cfg.get('annot_subset','all') # human_annot, machine_annot, all
     self.annot_path = os.path.join(self.db_root, 'annotations')
@@ -78,6 +90,7 @@ class InterHand(Videos):
     self._ref_bone = cfg.get('ref_bone', [8,9])
     self._crop_bbox = cfg.get('crop_bbox', False)
     self._crop_factor = cfg.get('crop_factor', 1.2)
+    self._res_size = cfg.get('res_size', (256,256))
 
     self._image_size = [512,512] #[512, 334] #some images are [334, 512] so we pad smaller side.
     self._joints = {w: i
@@ -156,8 +169,8 @@ class InterHand(Videos):
     os.makedirs(cache_folder, exist_ok=True)
     cache_path = os.path.join(cache_folder,
         f'Interhand30fps--split_{self.split}--annot_{self.annot_subset}--hand_{self._ref_handside}--minLenFrms{self.min_len_video}--metric_{self._annot_metric}')
-    if self.cfg.get('use_mini_dataset', False):
-      suffix = '##'.join(self.cfg.mini_dataset[self.split])
+    if self.use_mini_dataset:
+      suffix = '##'.join(self.mini_dataset[self.split])
       suffix = int(hashlib.sha256(suffix.encode('utf-8')).hexdigest(), 16) % 10**8
       cache_path = cache_path + f'--mini_dataset--{suffix}'
     cache_path = cache_path + '__.pkl'
@@ -191,8 +204,8 @@ class InterHand(Videos):
                                         annot_metric=self._annot_metric,
                                         crop_bbox=self._crop_bbox,
                                         crop_factor=self._crop_factor,
-                                        supervise_fraction=cfg.get('supervise_fraction',1.0),
-                                        add_first_last_frame=cfg.get('add_first_last_frame',True)))
+                                        supervise_fraction=self.supervise_fraction,
+                                        add_first_last_frame=self.add_first_last_frame))
     # release memory 
     self.joints = None
     self.cameras = None
@@ -215,9 +228,8 @@ class InterHand(Videos):
             num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
 
     # images features
-    self.images_features = images_features
-    if images_features is not None:
-      assert len(images_features)==len(self.list_videos_frames),"Images features are not matched with data."
+    if self.images_features is not None:
+      assert len(self.images_features)==len(self.list_videos_frames),"Images features are not matched with data."
 
   def ann2name(self, ann):
     return f"Capture{ann['capture']}/{ann['seq_name']}/cam{ann['camera']}/"
@@ -230,6 +242,7 @@ class InterHand(Videos):
       pass
     else:
       return False
+
     # joint validity
     if ann['hand_type']=="interacting":
       flag = all([v[0] for v in ann['joint_valid']])
@@ -237,6 +250,7 @@ class InterHand(Videos):
       flag =  all([v[0] for v in ann['joint_valid']][:21])
     elif ann['hand_type']=="left":
       flag = all([v[0] for v in ann['joint_valid']][-21:])
+
     return flag
 
   def get_video_folders(self):
@@ -258,8 +272,8 @@ class InterHand(Videos):
         video_folders[video_dir].append(ann)
 
     # use a subset of videos
-    if self.cfg.get('use_mini_dataset', False):
-      new_video_folders = dict(filter(lambda elem: elem[0].split(self.split+'/')[-1] in self.cfg.mini_dataset[self.split],video_folders.items()))
+    if self.use_mini_dataset:
+      new_video_folders = dict(filter(lambda elem: elem[0].split(self.split+'/')[-1] in self.mini_dataset[self.split],video_folders.items()))
       video_folders = new_video_folders
 
     # threshold length of video
@@ -294,73 +308,3 @@ class InterHand(Videos):
     capture = ann['capture']; camera = ann['camera']
     return self.mano_params[str(capture)]
 
-
-
-if __name__ == '__main__':
-  from easydict import EasyDict
-  cfg = {
-      "db_root": "misc/datapath/hand-pose",
-      "name":"interhand",
-      "annot_subset":"all", # "all|human_annot|machine_annot", #INTERHAND
-      "ref_handside":"right", # "left|interacting",
-      "annot_metric": "m",
-      "crop_bbox": false,
-      "crop_factor": 1.2,
-      "res_size": [256,256], # used if crop_bbox
-      "ref_bone": [8,9],
-      "root_joint": 0,
-      "labelset": ["image","joints3d", "joints3d_rel", "mano_params", "verts3d"], # "avaliable_annotation" in passed batch from dataloader
-      #"nseq": 1, # seq of samples 
-      #"spacing": 1, #[4,8], #space between samples
-      "min_len_video":0, #FILTER SHORT VIDEO
-      "supervise_fraction": 1.0, # makes semi-supervised setting as a flag of supervision
-      "add_first_last_frame": true,
-      "use_mini_dataset": true,
-      "mini_dataset":{"test":"Capture0/ROM07_RT_Finger_Occlusions/cam400488/"},#{"train":["train/BB13"]},#"when dict is empty,default json file in './misc fill that",
-      "augmentation": {
-        "do_scale": false,#"bool same as crop_bbox",
-        "same_scale":false ,
-        "scale_jitter": 0.0,
-        "do_rot": true,
-        "same_rot": true,
-        "max_rot": 0.3925,
-        "do_center": true,
-        "same_center": true,
-        "center_jitter": 0.1,
-        "do_color": true,
-        "same_color": false,
-          "color": {
-            "hue": 0.15,
-            "saturation": 0.5,
-            "contrast": 0.5,
-            "brightness": 0.5,
-            "blur_radius": 0.5
-          }
-        }
-      }
-
-  cfg = EasyDict(cfg)
-  use_mini_dataset = cfg.get("use_mini_dataset", False)
-  mini_dataset = cfg.get('mini_dataset', {})
-
-  if use_mini_dataset:
-    if not bool(mini_dataset):
-      subset_file = f"misc/{data_config.name}_minimal.json"
-      assert os.path.exists(subset_file), f'Not found "{data_file}".'
-      with open(subset_file, 'r') as f:
-        subset = EasyDict(json.load(f))
-        assert split in subset, f"Expected {split} in {subset_file}."
-        cfg.mini_dataset = EasyDict({split: subset[split]})
-
-  # image features
-  images_features = cfg.get("images_features", None)
-  if images_features:
-    feature_file = (images_features).format(split=split)
-    assert os.path.exists(feature_file), f'Not found "{feature_file}".'
-    with open(feature_file, 'rb') as f:
-      images_features = pickle.load(f)
-
-  dataset = InterHand(cfg,
-                      split='test',
-                      mano_root='misc/',
-                      images_features=images_features)

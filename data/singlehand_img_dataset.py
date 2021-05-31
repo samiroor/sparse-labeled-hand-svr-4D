@@ -23,16 +23,14 @@ from .standard_fields import Fields as Fls
 class ShImgDataset(Dataset):
   def __init__(self,
                dataset,
-               res_size,
                labelset,
-               augmentation,
                do_augment=False,
+               augmentation={},
                training=False,
                **kwargs):
     """
     Args:
       dataset (Data class): specific to each dataset.
-      res_size (int, int): desired image resolution.
       labelset (list): list of some names refer to the desired labels.
       augmentation (EasyDict): necessary augmentations.
       do_augment (bool):  do augmentation or not ...
@@ -73,7 +71,7 @@ class ShImgDataset(Dataset):
     if not self.dataset._crop_bbox:
       self.res_size = self.dataset._image_size
     else:
-      self.res_size = res_size
+      self.res_size = self.dataset._res_size
 
     self.return_metas = False
     if "return_metas" in kwargs:
@@ -85,7 +83,11 @@ class ShImgDataset(Dataset):
 
 
   def __getitem__(self, item):
-    video, frame, frame_status, video_id = self.next_trainitem(item) if self.training  else self.next_valitem(item)
+    if self.training:
+      video, frame, frame_status, video_id = self.next_trainitem(item)
+    else:
+      video, frame, frame_status, video_id = self.next_valitem(item)
+
     sample, meta = self.get_sample(video, frame, frame_status, video_id)
     sample.pop('aug')
     if self.return_metas:
@@ -103,6 +105,7 @@ class ShImgDataset(Dataset):
 
   def get_frame(self, item):
     video_frame = self.dataset.list_videos_frames[item]
+
     video_id, frame = int(video_frame.split(':')[0]),int(video_frame.split(':')[-1])
     # get video object
     video = self.dataset.videos[video_id]
