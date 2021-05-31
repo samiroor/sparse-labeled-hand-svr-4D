@@ -18,15 +18,12 @@ import data
 import metrics
 import utils
 
-from methods import obman, graph #spiral #oflow, resflow, interpolate
+from methods import obman, graph, pairflow
 
 method_dict = {
     'obman':obman,
     'graph':graph,
-    #'spiral':spiral,
-    #'oflow': oflow,
-    #'resflow':resflow,
-    #'interpolate':interpolate
+    'pairflow':pairflow
     }
 optimizer_dict = {
     'SGD': torch.optim.SGD,
@@ -44,18 +41,25 @@ scheduler_dict = {
 
 def get_dataloaders(
     cfg,
+    data_cfg,
+    augmentation_cfg,
     mano_root='misc/mano_v1_2/models',
-    shuffle=False,
     training=False,
-    do_augment=False,
+    shuffle=False,
     ):
-
+  """
+    Args:
+      cfg (EasyDict) : dataloader config.
+      data_cfg (EasyDict): data specification config.
+      augmentation_cfg (EasyDict): augmentation config.
+  """
   dataloader = data.get_dataloaders(
       cfg,
+      data_cfg,
+      augmentation_cfg,
       mano_root=mano_root,
-      shuffle=shuffle,
       training=training,
-      do_augment=do_augment,
+      shuffle=shuffle,
       )
   return dataloader
 
@@ -99,7 +103,7 @@ def get_model(
     ):
   method_name = cfg.name
   if method_name in method_dict:
-    return method_dict[method_name].get_model(
+    model = method_dict[method_name].get_model(
         cfg[method_name],
         device,
         **kwargs,
@@ -107,6 +111,7 @@ def get_model(
   else:
     raise NotImplementedError(f"model name {method} is not yet defined.")
 
+  return torch.nn.DataParallel(model).to(device)
 
 # ********************** OPTIMIZER **********************
 

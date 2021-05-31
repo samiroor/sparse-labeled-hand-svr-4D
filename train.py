@@ -26,7 +26,6 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('--exp_dir', default='exp_dir/config.json', help="Experiment Directory & config")
 parser.add_argument('--restore_file', default=None, help="Weights to reload before training")
-parser.add_argument('--augment', action='store_true', help='Training with augmentation')
 parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
 parser.add_argument('--eval_only', dest='eval_only', action='store_true')
 parser.add_argument('--test_only', dest='test_only', action='store_true')
@@ -331,16 +330,18 @@ if __name__ == '__main__':
   if not (args.eval_only or args.test_only):
     train_loader = builder.get_dataloaders(
         cfg['training'].dataloader,
+        data_cfg=cfg['data_spec'],
+        augmentation_cfg=cfg['augmentation'],
         training=True,
-        do_augment=args.augment,
         shuffle=True,
         )
 
     if cfg['training'].get('calc_mean_std',False):
       mean_std_loader = builder.get_dataloaders(
         cfg['training'].dataloader,
+        data_cfg=cfg['data_spec'],
+        augmentation_cfg={},
         training=True,
-        do_augment=False,
         shuffle=False,
         )
       mean_std_loader.dataset.do_augment = False
@@ -350,8 +351,9 @@ if __name__ == '__main__':
   if not args.test_only:
     vis_loader = builder.get_dataloaders(
         cfg['evaluating'].dataloader,
+        data_cfg=cfg['data_spec'],
+        augmentation_cfg={},
         training=False,
-        do_augment=False,
         shuffle=True,
         )
     vis_data = next(iter(vis_loader))
@@ -359,8 +361,9 @@ if __name__ == '__main__':
 
     val_loader = builder.get_dataloaders(
         cfg['evaluating'].dataloader,
+        data_cfg=cfg['data_spec'],
+        augmentation_cfg={},
         training=False,
-        do_augment=False,
         shuffle=False,
         )
 
@@ -368,8 +371,9 @@ if __name__ == '__main__':
   if args.test_only:
     vis_loader = builder.get_dataloaders(
         cfg['testing'].dataloader,
+        data_cfg=cfg['data_spec'],
+        augmentation_cfg={},
         training=False,
-        do_augment=False,
         shuffle=True,
         )
     vis_data = next(iter(vis_loader))
@@ -377,8 +381,9 @@ if __name__ == '__main__':
 
     test_loader = builder.get_dataloaders(
         cfg['testing'].dataloader,
+        data_cfg=cfg['data_spec'],
+        augmentation_cfg={},
         training=False,
-        do_augment=False,
         shuffle=False,
         )
 
@@ -445,12 +450,27 @@ if __name__ == '__main__':
         off_scheduler=True,
         )
 
+
+    suffix = utils.get_spec_name(
+        cfg[f'{"testing" if args.test_only else "evaluating"}'].dataloader
+        )
+
     exp_dir = os.path.join(
         exp_dir,
-        f'{"eval_on_" if args.eval_only else "test_on_"}_{args.restore_file[:-3]}_epoch{epoch}')
+        f'{"eval_on_" if args.eval_only else "test_on_"}_{args.restore_file[:-3]}_epoch{epoch}',
+        suffix)
+
+    os.makedirs(exp_dir, exist_ok=True)
+
+    # save eval config
+    with open(os.path.join(exp_dir, 'eval_opt.json'), 'w') as fp:
+      json.dump(cfg[f'{"testing" if args.test_only else "evaluating"}'],
+                fp,
+                indent=2,
+                sort_keys=True)
 
     # set loggers 
-    logpath = os.path.join(exp_dir, f'{"eval-logFile.log" if args.eval_only else "test-logFile.log"}')
+    logpath = os.path.join(exp_dir, 'logFile.log')
     utils.set_logger(logpath)
 
     # run

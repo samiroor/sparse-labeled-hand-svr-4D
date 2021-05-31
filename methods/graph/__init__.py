@@ -118,25 +118,38 @@ def get_model(
       annot_metric=annot_metric,
       **kwargs,
       )
-  model = nn.DataParallel(model).to(device)
 
-  ### load pretrained ###
-  pretrained_file = cfg.get('pretained_file', None)
+
+  ### load pretrained ####
+  pretrained_file = cfg.get('pretrained_file', None)
   if pretrained_file:
-    utils.load_checkpoint(pretrained_file, model)
+    assert os.path.exists(pretrained_file), f'Expected file {pretrained_file} is not found'
+    ckpt_dict = torch.load(pretrained_file)['state_dict']
+    ckpt_dict = {k.split('module.')[-1]:v for k,v in ckpt_dict.items()}
+
+    model_dict = model.state_dict()
+    for k in model_dict:
+      if k not in ckpt_dict:
+        print("Missed pretrained weight: {}".format(k))
+    model_dict.update(ckpt_dict)
+    model.load_state_dict(model_dict)
     print(f'pretrained weight from {pretrained_file} is loaded.')
 
-  ### freeze modules ###
-  for module, part_name in [(model.module.encoder,'encoder'),
-                            (model.module.graph_base,'graph_base'),
-                            (model.module.graph_head,'graph_head'),
-                            (model.module.st_head,'st_head'),
-                            (model.module.obj_st_head, 'obj_st_head')]:
-    if cfg.freeze.get(part_name, False):
-      for name,p in module.named_parameters():
-        p.requires_grad = False
-        print(f'{name} is freezed.')
- 
+
+  #### freeze modules ####
+  freeze = cfg.get('freeze', {})
+  if bool(freeze):
+    for module, part_name in [(model.encoder,'encoder'),
+                              (model.graph_base,'garph_base'),
+                              (model.graph_head,'graph_head'),
+                              (model.st_head,'st_head'),
+                              (model.obj_st_head, 'obj_st_head')]:
+      if freeze.get(part_name, False):
+        for name,p in module.named_parameters():
+          p.requires_grad = False
+          print(f'{name} is freezed.')
+
+
   return model
 
 

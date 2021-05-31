@@ -33,6 +33,7 @@ class ObMan(nn.Module):
 
     self.mano_base = mano_base
     self.manolayer = manolayer
+    self.center_idx = self.manolayer.center_idx
 
     self.R_head = R_head
     self.pose_head = pose_head
@@ -50,7 +51,7 @@ class ObMan(nn.Module):
     self.off_z = off_z
 
     self.adaptor_path = adaptor_path
-    self.adaptor = ManoAdaptor(load_path=self.daptor_path)
+    self.adaptor = ManoAdaptor(load_path=self.adaptor_path)
     rec_freeze(self.adaptor)
 
 
@@ -80,8 +81,8 @@ class ObMan(nn.Module):
     if self.adaptor_path is not None:
       adapt_joints, _ = self.adaptor(verts3d_rel)
       adapt_joints = adapt_joints.transpose(1, 2)
-      final_joints = adapt_joints - adapt_joints[:, self.manolayer.center_idx].unsqueeze(1)
-      final_verts  = verts3d_rel - adapt_joints[:, self.manolayer.center_idx].unsqueeze(1)
+      final_joints = adapt_joints - adapt_joints[:, self.center_idx].unsqueeze(1)
+      final_verts  = verts3d_rel - adapt_joints[:, self.center_idx].unsqueeze(1)
       verts3d_rel=final_verts; joints3d_rel=final_joints
 
     # annotation metric

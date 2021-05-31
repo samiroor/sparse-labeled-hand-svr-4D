@@ -45,7 +45,7 @@ class Graph(nn.Module):
     self.off_z = off_z
 
     self.adaptor_path = adaptor_path
-    self.adaptor = ManoAdaptor(load_path=self.daptor_path)
+    self.adaptor = ManoAdaptor(load_path=self.adaptor_path)
     rec_freeze(self.adaptor)
 
 

@@ -2,10 +2,18 @@ import os
 import numpy as np
 from collections import defaultdict
 from tqdm import tqdm
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+
+import torch
 
 import utils
 from visualize import visualizer
+from data import Fields as Fls
 from data import torch_denormalize as denormalize
+
 
 
 class BaseTrainer(object):
@@ -64,7 +72,8 @@ class BaseTrainer(object):
             restore_path,
             self.model,
             self.optimizer,
-            None if off_scheduler else self.scheduler
+            None if off_scheduler else self.scheduler,
+            allow_partial=True,
             )
         epoch = checkpoint['epoch']
         return epoch
@@ -88,7 +97,7 @@ class BaseTrainer(object):
     def _visualize_step(
         self,
         gt_dict,
-        prd_dict,
+        pred_dict,
         multiFrame=False,
         display_render=True,
         display_skeleton=True,

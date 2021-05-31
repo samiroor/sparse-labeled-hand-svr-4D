@@ -1,8 +1,9 @@
+import os
+import torch
 from torch import nn
+
 from manopth.manolayer import ManoLayer
 
-
-import utils
 from methods.modelutils import encoders, layers
 from methods.obman.model.obman import ObMan
 from methods.obman.trainer import ObManTrainer
@@ -133,25 +134,37 @@ def get_model(
       annot_metric=annot_metric,
       **kwargs,
       )
-  model = nn.DataParallel(model).to(device)
 
   ### load pretrained ####
-  pretrained_file = cfg.get('pretained_file', None)
+  pretrained_file = cfg.get('pretrained_file', None)
+
   if pretrained_file:
-    utils.load_checkpoint(pretrained_file, model)
+    assert os.path.exists(pretrained_file), f'Expected file {pretrained_file} is not found'
+    ckpt_dict = torch.load(pretrained_file)['state_dict']
+    ckpt_dict = {k.split('module.')[-1]:v for k,v in ckpt_dict.items()}
+
+    model_dict = model.state_dict()
+    for k in model_dict:
+      if k not in ckpt_dict:
+        print("Missed pretrained weight: {}".format(k))
+    model_dict.update(ckpt_dict)
+    model.load_state_dict(model_dict)
     print(f'pretrained weight from {pretrained_file} is loaded.')
 
+
   #### freeze modules ####
-  for module, part_name in [(model.module.encoder,'encoder'),
-                            (model.module.mano_base,'mano_base'),
-                            (model.module.R_head,'R_head'),
-                            (model.module.pose_head,'pose_head'),
-                            (model.module.st_head,'st_head'),
-                            (model.module.obj_st_head, 'obj_st_head')]:
-    if cfg.freeze.get(part_name, False):
-      for name,p in module.named_parameters():
-        p.requires_grad = False
-        print(f'{name} is freezed.')
+  freeze = cfg.get('freeze', {})
+  if bool(freeze):
+    for module, part_name in [(model.encoder,'encoder'),
+                              (model.mano_base,'mano_base'),
+                              (model.R_head,'R_head'),
+                              (model.pose_head,'pose_head'),
+                              (model.st_head,'st_head'),
+                              (model.obj_st_head, 'obj_st_head')]:
+      if freeze.get(part_name, False):
+        for name,p in module.named_parameters():
+          p.requires_grad = False
+          print(f'{name} is freezed.')
 
 
   return model

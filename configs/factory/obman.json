@@ -1,30 +1,5 @@
 { 
-  "inherit_from":null, # when you run add a data json path
-  "training":{
-    "vis_freq":1,
-    "eval_freq":1,
-    "fix_base_batch_norm":true, 
-    #"grad_norm_clip": false,
-    #"grad_norm_clip_value": 0.0,
-    "optimizer":"Adam",
-    "optimizer_kwargs":{"weight_decay":0.0},
-    "lr": 1e-4,
-    "scheduler":"ExponentialLR",
-    "scheduler_kwargs":{"gamma":0.95, "last_epoch":-1},
-    "num_epochs": 100,
-    "dataloader":{
-      "batch_size":32,
-      "workers": 8,
-      "datasets":{} #should come from parent config
-    }
-  },
-  "evaluating":{
-    "dataloader":{
-      "batch_size":32,
-      "workers": 8,
-      "datasets":{}
-    }
-  },
+  "inherit_from":null, # when you run add a data spec json path
   "metrics":{
     "names":["hand3d"],
     "ops":{"xyz_mean3d":"min"}#{"loss": "min"}
@@ -37,10 +12,9 @@
       "scale_factor":0.0001, #emprically set
       "trans_factor":100, #emprically set
       "off_z":0.4, # emprically set ( should change for different data (in annot metric))
-      "return_mano_features":false,
+      "return_base_features":false,
       "return_encoder_features":false,
-      "use_adaptor":false, # when data is fphab it should be true,
-      "adaptor_path":null,
+      "adaptor_path":null,# when data is fphab it should be a path,
       "ncomps":15,
       "use_pca":true,
       "use_shape":true,

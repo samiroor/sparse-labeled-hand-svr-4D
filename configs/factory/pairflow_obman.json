@@ -1,0 +1,64 @@
+{ 
+  "inherit_from":null, # when you run add a data json path
+  "metrics":{
+    "names":["hand3d"],
+    "ops":{"xyz_mean3d":"min"}#{"loss": "min"}
+  },
+  "model":{
+    "name":"pairflow",
+    "pairflow":{
+      "morph_key":"verts3d",
+      "use_base_features":false,
+      "context_base":"fcs",
+      #"context_base_kwargs",
+      "context_head":"subtract",
+      #"context_head_kwargs",
+      "velocity_field":"resblock",
+      #"velocity_field_kwargs",
+      "flow":"resflow",
+      #"flow_kwargs",
+      "mesh_predictor":"obman",
+      "mesh_predictor_kwargs":{
+        "pretrained_file":null,
+        "freeze":{},
+        "c_dim":512,
+        "h_dim":512,
+        "scale_factor":0.0001, 
+        "trans_factor":100,    
+        "off_z":0.4,          
+        "return_base_features":false,
+        "return_encoder_features":false,
+        "ncomps":15,
+        "use_pca":true,
+        "use_shape":true,
+        "ref_side":"right",
+        "center_idx":0,
+        "annot_metric":"m",
+        "encoder":"resnet18",
+        "mano_base":"fcs",
+        "mano_base_kwargs":{
+          "ch_in":512, #c_dim,
+          "ch_out":512, #h_dim,
+          "ch_hiddens":[512],
+          "activation":"relu",
+          "dropout":0.0,
+          "flatten":false
+        },
+        "st_head":"fcs",
+        "obj_st_head":null
+      },
+      "loss":{
+        "flow":{
+          "verts3d":[0.5,"l2"],
+          "joints3d":[0.5,"l2"]
+        },
+        "mesh_predictor":{
+          "joints3d":[0.5,"l2"],
+          "objverts3d":[0.5,"l2"],
+          "mano_shapes":[5e-7,"penalty"],
+          "mano_poses":[5e-6,"penalty"]
+        }
+      }
+    }
+  }
+}

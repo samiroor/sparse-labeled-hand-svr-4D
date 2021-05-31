@@ -52,6 +52,23 @@ def update_recursive(dict1, dict2):
       dict1[k] = v
 
 
+def get_spec_name(cfg, name=''):
+  for k,v in cfg.items():
+    if k in (
+        "labelset",
+        "do_augment",
+        "add_first_last_frame",
+        "use_mini_dataset",
+        ):
+      continue
+    name += f'_{k}_'
+    if isinstance(v, dict):
+      name = get_spec_name(v, name)
+    else:
+      name += ','.join(map(str,v)) if isinstance(v, list) else str(v)
+  return name
+
+
 def adjust_bn_params(
     model,
     module_name,

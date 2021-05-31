@@ -1,0 +1,43 @@
+{ 
+  "inherit_from":"configs/miniInterhandv1/data_cfg.json",
+  "metrics":{
+    "names":["hand3d"],
+    "ops":{"xyz_mean3d":"min"}#{"loss": "min"}
+  },
+  "model":{
+    "name":"obman",
+    "obman":{
+      "c_dim":512,
+      "h_dim":512,
+      "scale_factor":0.0001,
+      "trans_factor":100,
+      "off_z":1.0,
+      "return_base_features":false,
+      "return_encoder_features":false,
+      "adaptor_path":null,
+      "ncomps":15,
+      "use_pca":true,
+      "use_shape":true,
+      "ref_side":"right",
+      "center_idx":0,
+      "annot_metric":"m",
+      "encoder":"resnet18",
+      "mano_base":"fcs",
+      "mano_base_kwargs":{
+        "ch_in":512, #c_dim,
+        "ch_out":512, #h_dim,
+        "ch_hiddens":[512],
+        "activation":"relu",
+        "dropout":0.0,
+        "flatten":false
+      },
+      "st_head":"fcs",
+      "obj_st_head":null,
+      "loss":{
+        "joints3d":[0.5,"l2"],
+        "mano_shapes":[5e-7,"penalty"],
+        "mano_poses":[5e-6,"penalty"]
+      }
+    }
+  }
+}
