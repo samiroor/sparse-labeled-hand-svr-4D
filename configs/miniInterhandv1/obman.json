@@ -34,9 +34,9 @@
       "st_head":"fcs",
       "obj_st_head":null,
       "loss":{
-        "joints3d":[0.5,"l2"],
-        "mano_shapes":[5e-7,"penalty"],
-        "mano_poses":[5e-6,"penalty"]
+        #"joints3d":[0.5,"l2"],
+        #"mano_shapes":[5e-7,"penalty"],
+        #"mano_poses":[5e-6,"penalty"]
       }
     }
   }

@@ -93,7 +93,7 @@ class PairFlowTrainer(BaseTrainer):
               self.loss_cfg.flow,
               )
           loss += loss_flow
-          loss_dict.update({'flow_'+k:v for k, v in loss_flow_dict.items()})
+          loss_dict.update({'loss_flow_s__'+k:v for k, v in loss_flow_dict.items()})
         # mesh predictor loss
         if bool(self.loss_cfg.mesh_predictor):
           loss_predictor, loss_predictor_dict = self._compute_loss(
@@ -102,7 +102,7 @@ class PairFlowTrainer(BaseTrainer):
               self.loss_cfg.mesh_predictor,
               )
           loss += loss_predictor
-          loss_dict.update({'mesh_predictor_'+k:v for k, v in loss_predictor_dict.items()})
+          loss_dict.update({'loss_mesh_predictor_s__'+k:v for k, v in loss_predictor_dict.items()})
 
         loss.backward()
         if self.grad_norm_clip:
@@ -114,7 +114,7 @@ class PairFlowTrainer(BaseTrainer):
 
         if calc_metrics:
           train_dict.update(
-              self.metric_step(supervised_batch, output_batch['flow']['supervised'])
+              {'metric_flow_s__'+k:v for k,v in self.metric_step(supervised_batch, output_batch['flow']['supervised']).items()}
               )
 
         if display:
@@ -168,7 +168,7 @@ class PairFlowTrainer(BaseTrainer):
                 self.loss_cfg.flow,
                 )
             loss += loss_flow
-            loss_dict.update({'flow_infer__'+k:v for k, v in loss_flow_dict.items()})
+            loss_dict.update({'loss_flow_infer_u__'+k:v for k, v in loss_flow_dict.items()})
           # mesh predictor
           if bool(self.loss_cfg.mesh_predictor):
             loss_predictor, loss_predictor_dict = self._compute_loss(
@@ -177,15 +177,16 @@ class PairFlowTrainer(BaseTrainer):
               self.loss_cfg.mesh_predictor,
               )
             loss += loss_predictor
-            loss_dict.update({'mesh_predictor_unsupervised__'+k:v for k, v in loss_predictor_dict.items()})
+            loss_dict.update({'loss_mesh_predictor_u__'+k:v for k, v in loss_predictor_dict.items()})
           eval_dict = loss_dict
           eval_dict['loss'] = loss.item()
 
 
         if calc_metrics:
           eval_dict.update(
-              self.metric_step(unsupervised_batch, output_batch['flow']['infer_unsupervised'])
-            )
+              {'metric_flow_infer_u__'+k:v for k, v in self.metric_step(unsupervised_batch, output_batch['flow']['infer_unsupervised']).items()}
+              )
+          eval_dict["samples_number"]=eval_dict['metric_flow_infer_u__samples_number']
 
         if display:
           self.visualize_step(unsupervised_batch, output_batch['flow']['infer_unsupervised'], vis_dir=vis_dir)

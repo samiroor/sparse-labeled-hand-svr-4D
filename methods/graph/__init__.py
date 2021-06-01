@@ -184,15 +184,15 @@ def adjust_parameter_groups(model, opt_kwargs, lr):
         logging.warn(f"Parameter {name} has default lr")
 
   groups = [dict(params=encoder_group,
-                 lr=opt_kwargs.get('encoder_lr', lr),
+                 lr=opt_kwargs.get('encoder_lr', lr)),
             dict(params=st_head_group,
-                 lr=opt_kwargs.get('st_head_lr', lr),
+                 lr=opt_kwargs.get('st_head_lr', lr)),
             dict(params=graph_group,
-                 lr=opt_kwargs.get('graph_lr', lr)]
+                 lr=opt_kwargs.get('graph_lr', lr))]
   return groups
 
 
-def get_optiimizer(
+def get_optimizer(
     opt_name,
     opt_kwargs,
     lr,

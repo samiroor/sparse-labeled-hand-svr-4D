@@ -314,6 +314,8 @@ if __name__ == '__main__':
 
   # log file
   exp_dir = os.path.join(args.exp_dir,'run')
+  logpath = os.path.join(exp_dir, 'logFile.log')
+  utils.set_logger(logpath)
 
   # set device
   is_cuda = (torch.cuda.is_available() and not args.no_cuda)
@@ -502,8 +504,6 @@ if __name__ == '__main__':
   else:
 
     # set loggers & writers
-    logpath = os.path.join(exp_dir, 'logFile.log')
-    utils.set_logger(logpath)
     logging.info('======== Training ========')
     writer = SummaryWriter(exp_dir, max_queue=100)
     logging.info(exp_dir)

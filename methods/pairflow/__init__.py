@@ -86,7 +86,7 @@ def get_model(
     'c_dim':c_dim,
     'hidden_size':c_dim,
     'activation':'tanh',
-    'n_blocks':5,
+    'n_blocks':3,
     'use_positional_encoding':False,
     })
 
@@ -140,15 +140,15 @@ def adjust_parameter_groups(model, opt_kwargs, lr):
         logging.warn(f"Parameter {name} has default lr")
 
   groups = [dict(params=mesh_predictor_group,
-                 lr=opt_kwargs.get('mesh_predictor_lr', lr),
+                 lr=opt_kwargs.get('mesh_predictor_lr', lr)),
             dict(params=context_head_group,
-                 lr=opt_kwargs.get('context_head_lr', lr),
+                 lr=opt_kwargs.get('context_head_lr', lr)),
             dict(params=velocity_field_group,
-                 lr=opt_kwargs.get('velocity_field_lr', lr)]
+                 lr=opt_kwargs.get('velocity_field_lr', lr))]
   return groups
 
 
-def get_optiimizer(
+def get_optimizer(
     opt_name,
     opt_kwargs,
     lr,

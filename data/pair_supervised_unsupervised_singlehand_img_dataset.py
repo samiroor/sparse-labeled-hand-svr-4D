@@ -69,18 +69,10 @@ class PairSupUnsupShImgDataset(SupervisedShImgDataset):
         video,
         supervised_frame,
         gap=gap,
-        flag=random.random(),
+        first_next=random.random() > 0.5,
         )
 
     assert frame_status == 0,'Expected to be picked from unsupervised collection.'
-    #print('#item number')
-    #print(item)
-    #print('#number of frames')
-    #print(video._num_frames)
-    #print('#supervised_frame')
-    #print(supervised_frame)
-    #print('#unsupervised_frame')
-    #print(unsupervised_frame)
     return video, supervised_frame, unsupervised_frame, video_id
 
 
@@ -88,25 +80,30 @@ class PairSupUnsupShImgDataset(SupervisedShImgDataset):
     video, supervised_frame, frame_status, video_id = self.get_supervised_frame(item)
     assert frame_status == 1,'Expected to be picked from supervised collection.'
 
-    assert isinstance(self.gap, int), 'Expected fixed gaps for evaluation'
+    # set seed
+    random.seed(item)
+    gap = self.gap if isinstance(self.gap, int) else random.randint(self.gap[0], self.gap[1])
+
+    random.seed(item)
     unsupervised_frame, frame_status = self.pass_unsupervised_frame(
         video,
         supervised_frame,
-        gap=self.gap,
-        flag=1,
+        gap=gap,
+        first_next=random.random() > 0.5,
         )
+
     assert frame_status == 0,'Expected to be picked from unsupervised collection.'
     return video, supervised_frame, unsupervised_frame, video_id
 
 
-  def pass_unsupervised_frame(self, video, frame, gap, flag):
+  def pass_unsupervised_frame(self, video, frame, gap, first_next=True):
     """
       To have correct setting, note that 
       supervised frames are set as Start + Every 1/supervisory_fraction frames + End
       so to have an unsupervised frame picked logically, given spacing should satisfy
       "spacing < 1/supervisory_fraction"
     """
-    if flag > 0.5:
+    if first_next:
       frames, _ = video.get_next_unsupervised_frames(frame + gap, n=1, spacing=1)
       if len(frames) < 1:
         frames,_ = video.get_prior_unsupervised_frames(frame - gap, n=1, spacing=1)

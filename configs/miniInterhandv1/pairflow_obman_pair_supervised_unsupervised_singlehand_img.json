@@ -1,5 +1,5 @@
 {
-  "inherit_from":"config/miniInterhandv1/pairflow_obman.json",
+  "inherit_from":"configs/miniInterhandv1/pairflow_obman.json",
   "training":{
     "vis_freq":10,
     "eval_freq":1,

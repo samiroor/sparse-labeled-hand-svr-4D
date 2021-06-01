@@ -150,6 +150,11 @@ def set_logger(log_path):
     logger = logging.getLogger()
     logger.setLevel(logging.INFO)
 
+    if logger.handlers:
+      for handler in handlers:
+        handler.close()
+        logger.removeHandler(handler)
+
     if not logger.handlers:
         # Logging to a file
         file_handler = logging.FileHandler(log_path)

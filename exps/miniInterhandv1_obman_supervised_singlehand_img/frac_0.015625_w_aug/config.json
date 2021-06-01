@@ -1,0 +1,74 @@
+{
+  "inherit_from":"configs/miniInterhandv1/obman.json",
+  "training":{
+    "vis_freq":80,
+    "eval_freq":10,
+    "fix_base_batch_norm":true, 
+    #"grad_norm_clip": false,
+    #"grad_norm_clip_value": 0.0,
+    "optimizer":"Adam",
+    "optimizer_kwargs":{"weight_decay":0.0},
+    "lr":1e-4,
+    "scheduler":"ExponentialLR",
+    "scheduler_kwargs":{"gamma":0.9875, "last_epoch":-1},
+    "num_epochs":800,
+    "dataloader":{
+      "batch_size":64,
+      "workers": 8,
+      "datasets":{
+        "supervised_singlehand_img":{
+          "split":"train",
+          "supervise_fraction": 0.015625,
+          "add_first_last_frame": true,
+          "do_augment":true,
+          "labelset": [
+            "image",
+            "joints3d",
+            "joints3d_rel",
+            "mano_params",
+            "verts3d"]
+        }
+      }
+    }
+  },
+  "evaluating":{
+    "dataloader":{
+      "batch_size":64,
+      "workers": 8,
+      "datasets":{
+        "supervised_singlehand_img":{
+          "split":"val",
+          "supervise_fraction": 0.015625,
+          "add_first_last_frame": true,
+          "do_augment":false,
+          "labelset": [
+            "image",
+            "joints3d",
+            "joints3d_rel",
+            "mano_params",
+            "verts3d"]
+        }
+      }
+    }
+  },
+  "testing":{
+    "dataloader":{
+      "batch_size":64,
+      "workers": 8,
+      "datasets":{
+        "unsupervised_singlehand_img":{
+          "split":"train",
+          "supervise_fraction": 0.015625,
+          "add_first_last_frame": true,
+          "do_augment":false,
+          "labelset": [
+            "image",
+            "joints3d",
+            "joints3d_rel",
+            "mano_params",
+            "verts3d"]
+        }
+      }
+    }
+  }
+}

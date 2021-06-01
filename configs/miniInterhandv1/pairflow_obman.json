@@ -10,13 +10,28 @@
       "morph_key":"verts3d",
       "use_base_features":false,
       "context_base":"fcs",
-      #"context_base_kwargs",
+      "context_base_kwargs":{
+        "ch_in":512, #"feature_dim",
+        "ch_hiddens":[256],
+        "ch_out":512,
+        "activation":"tanh",
+        "dropout":0.0,
+        "flatten":false
+      },
       "context_head":"subtract",
-      #"context_head_kwargs",
+      "context_head_kwargs":{},
       "velocity_field":"resblock",
-      #"velocity_field_kwargs",
+      "velocity_field_kwargs":{
+        "c_dim":512, #"feature_dim",
+        "hidden_size":512,
+        "activation":"tanh",
+        "n_blocks":3,
+        "use_positional_encoding":false
+      },
       "flow":"resflow",
-      #"flow_kwargs",
+      "flow_kwargs":{
+        "T":3
+      },
       "mesh_predictor":"obman",
       "mesh_predictor_kwargs":{
         "pretrained_file":null,
@@ -25,7 +40,7 @@
         "h_dim":512,
         "scale_factor":0.0001, 
         "trans_factor":100,    
-        "off_z":0.4,          
+        "off_z":1.0,          
         "return_base_features":false,
         "return_encoder_features":true,
         "ncomps":15,
@@ -49,14 +64,14 @@
       },
       "loss":{
         "flow":{
-          "verts3d":[0.5,"l2"],
-          "joints3d":[0.5,"l2"]
+          #"verts3d":[0.5,"l2"],
+          #"joints3d":[0.5,"l2"]
         },
         "mesh_predictor":{
-          "joints3d":[0.5,"l2"],
-          "objverts3d":[0.5,"l2"],
-          "mano_shapes":[5e-7,"penalty"],
-          "mano_poses":[5e-6,"penalty"]
+          #"joints3d":[0.5,"l2"],
+          #"objverts3d":[0.5,"l2"],
+          #"mano_shapes":[5e-7,"penalty"],
+          #"mano_poses":[5e-6,"penalty"]
         }
       }
     }
