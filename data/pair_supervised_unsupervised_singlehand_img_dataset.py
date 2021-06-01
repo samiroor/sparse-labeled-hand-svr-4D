@@ -81,15 +81,14 @@ class PairSupUnsupShImgDataset(SupervisedShImgDataset):
     assert frame_status == 1,'Expected to be picked from supervised collection.'
 
     # set seed
-    random.seed(item)
-    gap = self.gap if isinstance(self.gap, int) else random.randint(self.gap[0], self.gap[1])
+    random_state = np.random.RandomState(item)
+    gap = self.gap if isinstance(self.gap, int) else random_state.randint(self.gap[0], self.gap[1])
 
-    random.seed(item)
     unsupervised_frame, frame_status = self.pass_unsupervised_frame(
         video,
         supervised_frame,
         gap=gap,
-        first_next=random.random() > 0.5,
+        first_next=random_state.choice([0,1]),
         )
 
     assert frame_status == 0,'Expected to be picked from unsupervised collection.'
