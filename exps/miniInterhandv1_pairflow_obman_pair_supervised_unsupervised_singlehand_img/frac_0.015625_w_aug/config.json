@@ -1,0 +1,100 @@
+{
+  "inherit_from":"configs/miniInterhandv1/pairflow_obman.json",
+  "training":{
+    "vis_freq":10,
+    "eval_freq":1,
+    "fix_base_batch_norm":true, 
+    #"grad_norm_clip": false,
+    #"grad_norm_clip_value": 0.0,
+    "optimizer":"Adam",
+    "optimizer_kwargs":{"weight_decay":0.0, "mesh_predictor_lr":1e-6},
+    "lr": 1e-3,
+    "scheduler":"ExponentialLR",
+    "scheduler_kwargs":{"gamma":0.90, "last_epoch":-1},
+    "num_epochs": 100,
+    "dataloader":{
+      "batch_size":32,
+      "workers": 8,
+      "datasets":{
+        "pair_supervised_unsupervised_singlehand_img":{
+          "split":"train",         
+          "supervise_fraction": 0.015625,
+          "add_first_last_frame": true,
+          "gap":[1,32], 
+          "do_augment":true,
+          "labelset": [
+            "image",
+            "joints3d",
+            "joints3d_rel",
+            "mano_params",
+            "verts3d"]
+        }
+      }
+    }
+  },
+  "evaluating":{
+    "dataloader":{
+      "batch_size":32,
+      "workers": 8,
+      "datasets":{
+        "pair_supervised_unsupervised_singlehand_img":{
+          "split":"train",          
+          "supervise_fraction": 0.015625,
+          "add_first_last_frame": true,
+          "gap":[1,32],
+          "do_augment":false,
+          "labelset": [
+            "image",
+            "joints3d",
+            "joints3d_rel",
+            "mano_params",
+            "verts3d"]
+        }
+      }
+    }
+  },
+  "testing":{
+    "dataloader":{
+      "batch_size":32,
+      "workers": 8,
+      "datasets":{
+        "pair_supervised_unsupervised_singlehand_img":{
+          "split":"train",          
+          "supervise_fraction": 0.015625,
+          "add_first_last_frame": true,
+          "gap":[1,32],
+          "do_augment":false,
+          "labelset": [
+            "image",
+            "joints3d",
+            "joints3d_rel",
+            "mano_params",
+            "verts3d"]
+        }
+      }
+    }
+  },
+  "model":{
+    "name":"pairflow",
+    "pairflow":{
+      "mesh_predictor":"obman",
+      "mesh_predictor_kwargs":{
+        "pretrained_file":"exps/miniInterhandv1_obman_supervised_singlehand_img/frac_0.015625_w_aug/run/last.pt",
+        "freeze":{}
+      },
+      "loss":{
+        "flow":{
+          "verts3d":[0.5,"l2"],
+          #"joints3d":[0.5,"l2"]
+        },
+        "mesh_predictor":{
+          "verts3d":[0.5,"l2"],
+          #"joints3d":[0.5,"l2"],
+          #"objverts3d":[0.5,"l2"],
+          "mano_shapes":[5e-7,"penalty"],
+          "mano_poses":[5e-6,"penalty"]
+          }
+      }
+    }
+  }
+}
