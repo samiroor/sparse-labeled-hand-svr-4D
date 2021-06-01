@@ -1,29 +1,28 @@
 import torch
 import torch.nn as nn
-from data import Fields as fields
+
 
 class ResFlow(nn.Module):
-  def __init__(self, velocity_field, T):
+  def __init__(self, velocity_field, T, displacement=0.3):
     super().__init__()
     self.velocity_field = velocity_field
     self.T = T
+    self.displacement = displacement
 
-  def forward(self, input_dict, cond):
+  def forward(self, x, cond):
     """x: [B,V,3]
        cond: [B,d]
     """
-    x = input_dict[fields.verts3d]
+    # displace only in x direction 
+    x = x - x.new_tensor([[self.displacement,0,0]])
     y_hat = self.forward_order4(x, cond)
     # TODO need intermediate?
-    output_dict = {fields.verts3d: y_hat[-1]}
-    return output_dict
+    return y_hat[-1]
 
-  def inverse(self, input_dict):
-    x = input_dict[fields.verts3d]
+  def inverse(self, x):
     y_hat_inv = self.inverse_order4(x, cond)
     # TODO need intermediate
-    output_dict = {filds.verts3d: y_hat_inv[-1]}
-    return output_dict
+    return y_hat_inv[-1]
 
   def forward_order1(self, x, cond):
     # Defines the forward pass of the network.
@@ -66,7 +65,7 @@ class ResFlow(nn.Module):
       k2 = self.velocity_field(y0 + k1*h/2, cond)
       k3 = self.velocity_field(y0 + k2*h/2, cond)
       k4 = self.velocity_field(y0 + k3*h, cond)
-      yn = y0 + (k1 + 2*k2 + 2*k3 + k4, cond)*h/6
+      yn = y0 + (k1 + 2*k2 + 2*k3 + k4)*h/6
       xs += [yn]
 
     return torch.stack(xs)
@@ -85,7 +84,7 @@ class ResFlow(nn.Module):
       k2 = -self.velocity_field(y0 + k1*h/2, cond)
       k3 = -self.velocity_field(y0 + k2*h/2, cond)
       k4 = -self.velocity_field(y0 + k3*h, cond)
-      yn = y0 + (k1 + 2*k2 + 2*k3 + k4, cond)*h/6
+      yn = y0 + (k1 + 2*k2 + 2*k3 + k4)*h/6
       xs += [yn]
 
     return torch.stack(xs)

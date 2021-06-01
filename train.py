@@ -396,12 +396,12 @@ if __name__ == '__main__':
 
 
   # optimizer
-  trainable_parameters = [p for p in model.parameters() if p.requires_grad]
   optimizer = builder.get_optimizer(
+      cfg['model'].name,
       cfg['training'].optimizer,
       cfg['training'].optimizer_kwargs,
       cfg['training'].lr,
-      trainable_parameters,
+      model,
       )
 
 

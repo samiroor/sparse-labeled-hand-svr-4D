@@ -1,25 +1,33 @@
 import torch
 import torch.nn as nn
-from methods.modelutils.layers import ResnetBlockFC, get_activation
+from methods.modelutils.layers import ResnetBlockFC, get_activation, PositionalEncoding
+
+
 
 class VelocityField(nn.Module):
-  def __init__(self, in_dim=3, out_dim=3, c_dim=512, hidden_size=512,
-               activation='tanh', n_blocks=5, positional_encoder=None):
-    in_dim = in_dim if positional_encoder is None else positional_encoder.get_dim(in_dim)
+  def __init__(
+      self,
+      in_dim=3,
+      out_dim=3,
+      c_dim=512,
+      hidden_size=512,
+      activation='tanh',
+      n_blocks=5,
+      use_positional_encoding=False,
+      ):
+    super().__init__()
+
+    self.positional_encoder = PositionalEncoding() if use_positional_encoding else None
+    in_dim = in_dim if self.positional_encoder is None else positional_encoder.get_dim(in_dim)
+    out_dim = out_dim
+
     self.n_blocks = n_blocks
-    # TODO: add positional encoder
-    self.positional_encoder = positional_encoder
     self.fc_p = nn.Linear(in_dim, hidden_size)
-    self.fc_c = nn.ModuleLi([
-      nn.Linear(c_dim, hidden_size) for i in range(n_blocks)])
-
-    # TODO: add ResnetBlockFC
-    self.blocks = nn.ModuleList([
-      ResnetBlockFC(hidden_size) for i in range(n_blocks)
-    ])
-
-    self.fc_out = nn.Linear(hidden_size, self.out_dim)
+    self.fc_c = nn.ModuleList([ nn.Linear(c_dim, hidden_size) for i in range(n_blocks) ])
+    self.blocks = nn.ModuleList([ ResnetBlockFC(hidden_size) for i in range(n_blocks) ])
+    self.fc_out = nn.Linear(hidden_size, out_dim)
     self.activation = get_activation(activation)
+
 
   def forward(self, x, cond):
     """

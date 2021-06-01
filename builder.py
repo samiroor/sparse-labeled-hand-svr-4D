@@ -20,16 +20,13 @@ import utils
 
 from methods import obman, graph, pairflow
 
+
 method_dict = {
     'obman':obman,
     'graph':graph,
     'pairflow':pairflow
     }
-optimizer_dict = {
-    'SGD': torch.optim.SGD,
-    'Adam': torch.optim.Adam,
-    'LBFGS':torch.optim.LBFGS,
-    }
+
 scheduler_dict = {
     "ExponentialLR": torch.optim.lr_scheduler.ExponentialLR,
     "MultiStepLR": torch.optim.lr_scheduler.MultiStepLR,
@@ -117,11 +114,13 @@ def get_model(
 
 
 def get_optimizer(
+    method_name,
     opt_name,
     opt_kwargs,
     lr,
-    parameters,
+    model,
     ):
+
   """Creates an optimizer based on the opt_config and model parameters.
   Args:
     - opt_name (str):
@@ -131,14 +130,16 @@ def get_optimizer(
   Returns:
     - optimizer object
   """
-  if opt_name in optimizer_dict:
-    return optimizer_dict[opt_name](
-        parameters,
-        lr=lr,
-        **opt_kwargs,
+  if method_name in method_dict:
+    return method_dict[method_name].get_optimizer(
+        opt_name,
+        opt_kwargs,
+        lr,
+        model,
         )
   else:
-    raise NotImplementedError("Optimizer {} is not defined".format(opt_name))
+    raise NotImplementedError(f"model name {method} is not yet defined.")
+
 
 
 def get_scheduler(

@@ -1,4 +1,6 @@
 import os
+import logging
+
 import torch
 from torch import nn
 
@@ -7,6 +9,14 @@ from manopth.manolayer import ManoLayer
 from methods.modelutils import encoders, layers
 from methods.obman.model.obman import ObMan
 from methods.obman.trainer import ObManTrainer
+
+
+
+optimizer_dict = {
+    'SGD': torch.optim.SGD,
+    'Adam': torch.optim.Adam,
+    'LBFGS':torch.optim.LBFGS,
+    }
 
 
 encoder_dict = {'resnet18': encoders.Resnet18}
@@ -146,10 +156,10 @@ def get_model(
     model_dict = model.state_dict()
     for k in model_dict:
       if k not in ckpt_dict:
-        print("Missed pretrained weight: {}".format(k))
+        logging.warn("Missed pretrained weight: {}".format(k))
     model_dict.update(ckpt_dict)
     model.load_state_dict(model_dict)
-    print(f'pretrained weight from {pretrained_file} is loaded.')
+    logging.info(f'pretrained weight from {pretrained_file} is loaded.')
 
 
   #### freeze modules ####
@@ -159,15 +169,55 @@ def get_model(
                               (model.mano_base,'mano_base'),
                               (model.R_head,'R_head'),
                               (model.pose_head,'pose_head'),
+                              (model.shape_head,'shape_head')
                               (model.st_head,'st_head'),
                               (model.obj_st_head, 'obj_st_head')]:
       if freeze.get(part_name, False):
         for name,p in module.named_parameters():
           p.requires_grad = False
-          print(f'{name} is freezed.')
+          logging.info(f'{name} is freezed.')
 
 
   return model
+
+
+#### optimizer ######
+
+
+def adjust_parameter_groups(model, opt_kwargs, lr):
+  encoder_group = []
+  st_head_group = []
+  mano_group = []
+
+  for name, p in model.named_parameters():
+    if p.requires_grad:
+      if 'encoder' in name:
+        encoder_group.append(p)
+      elif 'st_head' in name:
+        st_head_group.append(p)
+      elif 'mano_base' in name or '_head' in name:
+        mano_group.append(p)
+      else:
+        logging.warn(f"Parameter {name} has default lr")
+
+  groups = [dict(params=encoder_group,
+                 lr=opt_kwargs.get('encoder_lr', lr),
+            dict(params=st_head_group,
+                 lr=opt_kwargs.get('st_head_lr', lr),
+            dict(params=mano_group,
+                 lr=opt_kwargs.get('mano_lr', lr)]
+  return groups
+
+
+def get_optiimizer(
+    opt_name,
+    opt_kwargs,
+    lr,
+    model):
+  groups = adjust_parameter_groups(model, opt_kwargs, lr)
+  optimizer = optimizer_dict[opt_name](groups, lr=lr,
+                                       weight_decay=opt_kwargs.get('weight_decay',0.0))
+  return optimizer
 
 
 
