@@ -36,7 +36,7 @@ def get_model(
   c_dim = cfg.get('c_dim', 512) # encoder output dim
   h_dim = cfg.get('h_dim', 512) # graph head input dim
 
-  return_base_features = cfg.get('return_base_features', False)
+  return_tail_features = cfg.get('return_tail_features', False)
   return_encoder_features = cfg.get('return_encoder_features', False)
   adaptor_path = cfg.get('adaptor_path', None)
 
@@ -123,7 +123,7 @@ def get_model(
       scale_factor=scale_factor,
       trans_factor=trans_factor,
       off_z=off_z,
-      return_base_features=return_base_features,
+      return_tail_features=return_tail_features,
       return_encoder_features=return_encoder_features,
       adaptor_path=adaptor_path,
       annot_metric=annot_metric,
@@ -150,18 +150,29 @@ def get_model(
   #### freeze modules ####
   freeze = cfg.get('freeze', {})
   if bool(freeze):
-    for module, part_name in [(model.encoder,'encoder'),
-                              (model.graph_base,'garph_base'),
-                              (model.graph_head,'graph_head'),
-                              (model.st_head,'st_head'),
-                              (model.obj_st_head, 'obj_st_head')]:
-      if freeze.get(part_name, False):
-        for name,p in module.named_parameters():
-          p.requires_grad = False
-          logging.info(f'{name} is freezed.')
+
+    if freeze.get('whole', False):
+      for name, p in model.named_parameters():
+        p.requires_grad = False
+        logging.info(f'{name} is freezed.')
+
+    else:
+      module_dict ={
+          'encoder': model.encoder,
+          'graph_base': model.graph_base,
+          'graph_head': model.graph_head,
+          'st_head':model.st_head,
+          'obj_st_head':model.obj_st_head,
+          }
+
+      for module_name in freeze:
+        if freeze.get(module_name, False):
+          for name, p in module_dict[module_name].named_parameters():
+            p.requires_grad = False
+            logging.info(f'{name} is freezed.')
 
 
-  return model
+  return model.to(device)
 
 
 #### optimizer ######

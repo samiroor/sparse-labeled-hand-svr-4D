@@ -38,7 +38,7 @@ def get_model(
   c_dim = cfg.get('c_dim', 512) # encoder output dim
   h_dim = cfg.get('h_dim', 512) # pose & shape head input dim
 
-  return_base_features = cfg.get('return_base_features', False)
+  return_tail_features = cfg.get('return_tail_features', False)
   return_encoder_features = cfg.get('return_encoder_features', False)
   adaptor_path = cfg.get('adaptor_path', None)
 
@@ -138,7 +138,7 @@ def get_model(
       scale_factor=scale_factor,
       trans_factor=trans_factor,
       off_z=off_z,
-      return_base_features=return_base_features,
+      return_tail_features=return_tail_features,
       return_encoder_features=return_encoder_features,
       adaptor_path=adaptor_path,
       annot_metric=annot_metric,

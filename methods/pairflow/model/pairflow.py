@@ -13,7 +13,7 @@ class PairFlow(nn.Module):
       context_head,
       flow,
       morph_key="verts3d", #doesnot work on relative
-      use_base_features=False,
+      use_tail_features=False,
       **kwargs,
       ):
 
@@ -56,8 +56,8 @@ class PairFlow(nn.Module):
     self.flow = flow
 
     self.morph_key = Fls.verts3d if morph_key =="verts3d" else Fls.verts3d_rel
-    self.feature_key = Fls.base_features if use_base_features else Fls.encoder_features
-    assert (use_base_features and self.mesh_predictor.return_base_features) or self.mesh_predictor.return_encoder_features, "Expected mesh_predictor return some features!"
+    self.feature_key = Fls.tail_features if use_tail_features else Fls.encoder_features
+    assert (use_tail_features and self.mesh_predictor.return_tail_features) or self.mesh_predictor.return_encoder_features, "Expected mesh_predictor return some features!"
 
     self.center_idx = self.mesh_predictor.center_idx
     self.adaptor = self.mesh_predictor.adaptor

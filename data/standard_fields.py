@@ -54,7 +54,7 @@ class Fields(object):
   # features
   images_features = "images_features" #TODO omit
   encoder_features = "encoder_features"
-  base_features = "base_features"
+  tail_features = "tail_features"
 
   # flow loaders
   verts3d_t0 = "verts3d_t0" # verts3d @ t0

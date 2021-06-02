@@ -19,7 +19,7 @@ class ObMan(nn.Module):
       st_head,
       obj_st_head,
       adaptor_path=None,
-      return_base_features=False,
+      return_tail_features=False,
       return_encoder_features=False,
       annot_metric='m',
       scale_factor=0.0001,
@@ -42,7 +42,7 @@ class ObMan(nn.Module):
     self.st_head = st_head
     self.obj_st_head = obj_st_head
 
-    self.return_base_features = return_base_features
+    self.return_tail_features = return_tail_features
     self.return_encoder_features = return_encoder_features
 
     self.annot_metric = annot_metric
@@ -165,8 +165,8 @@ class ObMan(nn.Module):
           })
 
     # return features
-    if self.return_base_features:
-      output_batch[Fls.base_features] = mano_features
+    if self.return_tail_features:
+      output_batch[Fls.tail_features] = mano_features
 
     if self.return_encoder_features:
       output_batch[Fls.encoder_features] = features

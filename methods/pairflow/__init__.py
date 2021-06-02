@@ -57,14 +57,14 @@ def get_model(
 
   # shortcuts
   morph_key = cfg.get('morph_key', 'verts3d')
-  use_base_features = cfg.get('use_base_features', False)
+  use_tail_features = cfg.get('use_tail_features', False)
 
   # mesh predictor
   mesh_predictor = cfg.get('mesh_predictor', 'obman')
   mesh_predictor_kwargs = cfg.mesh_predictor_kwargs
   assert bool(mesh_predictor_kwargs), "Expected a config for mesh_predictor!"
 
-  c_dim = mesh_predictor_kwargs.h_dim if use_base_features else mesh_predictor_kwargs.c_dim
+  c_dim = mesh_predictor_kwargs.h_dim if use_tail_features else mesh_predictor_kwargs.c_dim
 
   # context 
   context_base = cfg.get('context_base', 'fcs')
@@ -111,7 +111,7 @@ def get_model(
       context_head=context_head,
       flow=flow,
       morph_key=morph_key,
-      use_base_features=use_base_features,
+      use_tail_features=use_tail_features,
       **kwargs,
       )
 
