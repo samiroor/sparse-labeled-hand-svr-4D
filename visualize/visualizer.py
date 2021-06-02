@@ -3,6 +3,7 @@ import cv2
 import shutil
 import numpy as np
 
+import trimesh
 import matplotlib
 import matplotlib.pyplot as plt
 matplotlib.use('Agg')
@@ -340,4 +341,13 @@ def err_cmap_colors(verts_prd, verts_gt, max_val=0.05):
   jet_cmap = matplotlib.cm.get_cmap("jet")
   errs_cmap = jet_cmap(errs_colors.detach().cpu().numpy())
   return verts_gt.new(errs_cmap)
+
+# save ply meshes
+def save_mesh_ply(verts, faces, name):
+  mesh = trimesh.Trimesh(
+      vertices=verts,
+      faces=faces,
+      process=False,
+      )
+  mesh.export(name)
 

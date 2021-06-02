@@ -86,6 +86,7 @@ class PairFlowTrainer(BaseTrainer):
 
         # compute loss
         loss = torch.tensor(0.).to(device); loss_dict = dict()
+
         # flow loss
         if bool(self.loss_cfg.flow):
           loss_flow, loss_flow_dict = self._compute_loss(
@@ -95,6 +96,7 @@ class PairFlowTrainer(BaseTrainer):
               )
           loss += loss_flow
           loss_dict.update({'loss_flow_s__'+k:v for k, v in loss_flow_dict.items()})
+
         # mesh predictor loss
         if bool(self.loss_cfg.mesh_predictor):
           loss_predictor, loss_predictor_dict = self._compute_loss(
@@ -167,6 +169,7 @@ class PairFlowTrainer(BaseTrainer):
 
           # compute loss
           loss = torch.tensor(0.).to(device); loss_dict = dict()
+
           # flow loss
           if bool(self.loss_cfg.flow):
             loss_flow, loss_flow_dict = self._compute_loss(
@@ -176,6 +179,7 @@ class PairFlowTrainer(BaseTrainer):
                 )
             loss += loss_flow
             loss_dict.update({'loss_flow_infer_u__'+k:v for k, v in loss_flow_dict.items()})
+
           # mesh predictor
           if bool(self.loss_cfg.mesh_predictor):
             loss_predictor, loss_predictor_dict = self._compute_loss(
@@ -265,8 +269,6 @@ class PairFlowTrainer(BaseTrainer):
         batch_samples,
         output_batch=None,
         step_mode='infer',
-        display_render=True,
-        display_skeleton=False,
         vis_dir='',
         ):
 
@@ -290,13 +292,21 @@ class PairFlowTrainer(BaseTrainer):
             output_batch['mesh_predictor']['supervised'],
             return_render_images=True,
             display_render=True,
+            save_ply=True,
+            suffix='mesh_predictor_supervised_',
+            vis_dir=vis_dir,
             )
+
         flow_render_images = self._visualize_step(
             unsupervised_batch,
             output_batch['flow']['infer_unsupervised'],
             return_render_images=True,
             display_render=True,
+            save_ply=True,
+            suffix='flow_infer_unsupervised_',
+            vis_dir=vis_dir,
             )
+
         title='First row mesh predictor output on Supervised images\n \
                Second row flow Inference output on Unsupervised images i.e \n \
                (Warped GT Supervised meshes into Unsupervised ones based on image evidence!)'
@@ -308,12 +318,19 @@ class PairFlowTrainer(BaseTrainer):
             output_batch['mesh_predictor']['unsupervised'],
             return_render_images=True,
             display_render=True,
+            save_ply=True,
+            suffix='mesh_predictor_unsupervised_',
+            vis_dir=vis_dir,
             )
+
         flow_render_images = self._visualize_step(
             supervised_batch,
             output_batch['flow']['supervised'],
             return_render_images=True,
             display_render=True,
+            save_ply=True,
+            suffix='flow_supervised_',
+            vis_dir=vis_dir,
             )
 
         title='First row mesh predictor output on Unsupervised images\n \

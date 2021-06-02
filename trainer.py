@@ -2,6 +2,7 @@ import os
 import numpy as np
 from collections import defaultdict
 from tqdm import tqdm
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -102,6 +103,8 @@ class BaseTrainer(object):
         display_render=False,
         display_skeleton=False,
         return_render_images=False,
+        save_ply=False,
+        suffix='',
         vis_dir='figs',
         ):
 
@@ -117,7 +120,7 @@ class BaseTrainer(object):
 
         if Fls.images in gt_dict: gt_dict[Fls.images]= denormalize(gt_dict[Fls.images].clone()) #B,c,H,W
 
-        #### rendering mesh ###
+        #### rendering mesh ####
         if (Fls.verts3d in pred_dict or Fls.verts3d in gt_dict) and display_render:
             with torch.no_grad():
                 render_images = visualizer.render(
@@ -127,6 +130,19 @@ class BaseTrainer(object):
                     images=gt_dict.get(Fls.images, None),
                     camsintr=gt_dict.get(Fls.camsintr, None),
                     )
+
+                if save_ply:
+                  faces = gt_dict[Fls.faces]
+                  for dict_, name in zip([gt_dict, pred_dict], ['-GT-','-PRD-']):
+                    if Fls.verts3d in dict_:
+                      batch_size = dict_[Fls.verts3d]
+                      for i in range(0, batch_size, batch_size//8):
+                        visualizer.save_mesh_ply(
+                            dict_[Fls.verts3d][i],
+                            faces[0],
+                            name = os.path.join(vis_dir,f'{suffix}{name}{i}.ply')
+                            )
+
                 if return_render_images:
                   return render_images
 
@@ -174,5 +190,5 @@ class BaseTrainer(object):
                     visualizer.skeleton3D(ax, joints3d_gt[s_i], color=(0,0,1), title='3D')
                     visualizer.skeleton3D(ax, joints3d_prd[s_i], color=(1,0,0), title='3D')
 
-                fig.savefig(os.path.join(vis_dir,f'sample_{s_i}.png'))
+                fig.savefig(os.path.join(vis_dir,f'{suffix}_sample_{s_i}.png'))
                 plt.close(fig)
