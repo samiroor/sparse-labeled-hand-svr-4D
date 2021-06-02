@@ -22,7 +22,7 @@
       "context_head_kwargs":{},
       "velocity_field":"resblock",
       "velocity_field_kwargs":{
-        "c_dim":512, #"feature_dim",
+        "c_dim":512, #"feature_dim", #out of context head
         "hidden_size":512,
         "activation":"tanh",
         "n_blocks":3,
@@ -35,7 +35,7 @@
       "mesh_predictor":"obman",
       "mesh_predictor_kwargs":{
         "pretrained_file":null,
-        "freeze":{},
+        "freeze":null,
         "c_dim":512,
         "h_dim":512,
         "scale_factor":0.0001, 

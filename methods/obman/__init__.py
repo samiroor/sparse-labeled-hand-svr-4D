@@ -163,19 +163,30 @@ def get_model(
 
 
   #### freeze modules ####
-  freeze = cfg.get('freeze', {})
-  if bool(freeze):
-    for module, part_name in [(model.encoder,'encoder'),
-                              (model.mano_base,'mano_base'),
-                              (model.R_head,'R_head'),
-                              (model.pose_head,'pose_head'),
-                              (model.shape_head,'shape_head')
-                              (model.st_head,'st_head'),
-                              (model.obj_st_head, 'obj_st_head')]:
-      if freeze.get(part_name, False):
-        for name,p in module.named_parameters():
-          p.requires_grad = False
-          logging.info(f'{name} is freezed.')
+  freeze = cfg.get('freeze', None)
+  if freeze is not None:
+
+    if freeze.get('whole', False):
+      for name, p in model.named_parameters():
+        p.requires_grad = False
+        logging.info(f'{name} is freezed.')
+
+    else:
+      module_dict ={
+          'encoder': model.encoder,
+          'mano_base': model.mano_base,
+          'R_head': model.R_head,
+          'pose_head': model.pose_head,
+          'shape_head': model.shape_head,
+          'st_head':model.st_head,
+          'obj_st_head':model.obj_st_head,
+          }
+
+      for module_name in freeze:
+        if freeze.get(module_name, False):
+          for name, p in module_dict[module_name].named_parameters():
+            p.requires_grad = False
+            logging.info(f'{name} is freezed.')
 
 
   return model
