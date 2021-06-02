@@ -10,6 +10,7 @@ from torch.nn.utils import clip_grad_norm_
 from torch import distributions as dist
 
 import utils
+from visualize import visualizer
 from trainer import BaseTrainer
 from data import Fields as Fls
 
@@ -118,7 +119,13 @@ class PairFlowTrainer(BaseTrainer):
               )
 
         if display:
-          self.visualize_step(supervised_batch, output_batch['flow']['supervised'], vis_dir=vis_dir)
+          self.visualize_step(
+              (supervised_batch, unsupervised_batch),
+              output_batch,
+              step_mode='train',
+              vis_dir=vis_dir,
+              )
+
 
         return train_dict
 
@@ -189,7 +196,12 @@ class PairFlowTrainer(BaseTrainer):
           eval_dict["samples_number"]=eval_dict['metric_flow_infer_u__samples_number']
 
         if display:
-          self.visualize_step(unsupervised_batch, output_batch['flow']['infer_unsupervised'], vis_dir=vis_dir)
+          self.visualize_step(
+              (supervised_batch, unsupervised_batch),
+              output_batch,
+              vis_dir=vis_dir,
+              step_mode='infer',
+              )
 
         if return_results:
             return eval_dict, output_batch
@@ -252,8 +264,9 @@ class PairFlowTrainer(BaseTrainer):
         self,
         batch_samples,
         output_batch=None,
+        step_mode='infer',
         display_render=True,
-        display_skeleton=True,
+        display_skeleton=False,
         vis_dir='',
         ):
 
@@ -265,13 +278,58 @@ class PairFlowTrainer(BaseTrainer):
             )
         return 0
 
+      supervised_batch = batch_samples[0]
+      unsupervised_batch = batch_samples[1]
+
       os.makedirs(vis_dir, exist_ok=True)
 
-      return self._visualize_step(
-          batch_samples,
-          output_batch,
-          multiFrame=False,
-          display_render=display_render,
-          display_skeleton=display_skeleton,
-          vis_dir=vis_dir,
+      if step_mode == 'infer':
+
+        mesh_predictor_render_images = self._visualize_step(
+            supervised_batch,
+            output_batch['mesh_predictor']['supervised'],
+            return_render_images=True,
+            display_render=True,
+            )
+        flow_render_images = self._visualize_step(
+            unsupervised_batch,
+            output_batch['flow']['infer_unsupervised'],
+            return_render_images=True,
+            display_render=True,
+            )
+        title='First row mesh predictor output on Supervised images\n \
+               Second row flow Inference output on Unsupervised images i.e \n \
+               (Warped GT Supervised meshes into Unsupervised ones based on image evidence!)'
+
+      elif step_mode=="train":
+
+        mesh_predictor_render_images = self._visualize_step(
+            unsupervised_batch,
+            output_batch['mesh_predictor']['unsupervised'],
+            return_render_images=True,
+            display_render=True,
+            )
+        flow_render_images = self._visualize_step(
+            supervised_batch,
+            output_batch['flow']['supervised'],
+            return_render_images=True,
+            display_render=True,
+            )
+
+        title='First row mesh predictor output on Unsupervised images\n \
+               Second row flow  output on Supervised images i.e \n \
+               (Warped Unsupervised meshes into Supervised ones)'
+
+      render_images = torch.cat([mesh_predictor_render_images, flow_render_images], dim=1)
+
+      # make video
+      visualizer.save_images(
+          render_images.detach().cpu().numpy(),
+          title=title,
+          save_dir=os.path.join(vis_dir, 'tmp'),
+          )
+
+      visualizer.create_video(
+          video_file=os.path.join(vis_dir, f'video.mp4'),
+          img_folder=os.path.join(vis_dir,'tmp'),
           )

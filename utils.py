@@ -151,7 +151,7 @@ def set_logger(log_path):
     logger.setLevel(logging.INFO)
 
     if logger.handlers:
-      for handler in handlers:
+      for handler in logger.handlers:
         handler.close()
         logger.removeHandler(handler)
 

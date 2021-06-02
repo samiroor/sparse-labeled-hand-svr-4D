@@ -280,6 +280,7 @@ def save_images(
     images,
     figaspect=0.2,
     get_cmap=True,
+    title=None,
     save_dir='tmp',
     ):
 
@@ -297,6 +298,9 @@ def save_images(
       x0 = ax.get_position().x0; y0 = ax.get_position().y0
       x1 = ax.get_position().x1; y1 = ax.get_position().y1
       cb, _ = cmap_bar(fig, xlim=[x0, y0-0.02, x1-x0, 0.02])
+
+    if title is not None:
+      ax.set_title('{}'.format(title), fontsize=8)
 
     fig.savefig(
         os.path.join(save_dir,f'{i}.png')

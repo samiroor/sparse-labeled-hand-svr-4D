@@ -163,8 +163,8 @@ def get_model(
 
 
   #### freeze modules ####
-  freeze = cfg.get('freeze', None)
-  if freeze is not None:
+  freeze = cfg.get('freeze', {})
+  if bool(freeze):
 
     if freeze.get('whole', False):
       for name, p in model.named_parameters():

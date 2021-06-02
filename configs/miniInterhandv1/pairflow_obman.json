@@ -35,7 +35,7 @@
       "mesh_predictor":"obman",
       "mesh_predictor_kwargs":{
         "pretrained_file":null,
-        "freeze":null,
+        "freeze":{},
         "c_dim":512,
         "h_dim":512,
         "scale_factor":0.0001, 

@@ -99,8 +99,9 @@ class BaseTrainer(object):
         gt_dict,
         pred_dict,
         multiFrame=False,
-        display_render=True,
-        display_skeleton=True,
+        display_render=False,
+        display_skeleton=False,
+        return_render_images=False,
         vis_dir='figs',
         ):
 
@@ -126,6 +127,9 @@ class BaseTrainer(object):
                     images=gt_dict.get(Fls.images, None),
                     camsintr=gt_dict.get(Fls.camsintr, None),
                     )
+                if return_render_images:
+                  return render_images
+
             visualizer.save_images(
                 render_images.detach().cpu().numpy(),
                 save_dir=os.path.join(vis_dir, 'tmp'),
