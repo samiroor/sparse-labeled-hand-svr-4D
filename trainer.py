@@ -131,20 +131,20 @@ class BaseTrainer(object):
                     camsintr=gt_dict.get(Fls.camsintr, None),
                     )
 
-                if save_ply:
-                  faces = gt_dict[Fls.faces]
-                  for dict_, name in zip([gt_dict, pred_dict], ['-GT-','-PRD-']):
-                    if Fls.verts3d in dict_:
-                      batch_size = dict_[Fls.verts3d]
-                      for i in range(0, batch_size, batch_size//8):
-                        visualizer.save_mesh_ply(
-                            dict_[Fls.verts3d][i],
-                            faces[0],
-                            name = os.path.join(vis_dir,f'{suffix}{name}{i}.ply')
-                            )
+            if save_ply:
+              faces = gt_dict[Fls.faces]
+              for dict_, name in zip([gt_dict, pred_dict], ['-GT-','-PRD-']):
+                if Fls.verts3d in dict_:
+                  batch_size = dict_[Fls.verts3d]
+                  for i in range(0, batch_size, batch_size//8):
+                    visualizer.save_mesh_ply(
+                        dict_[Fls.verts3d][i],
+                        faces[0],
+                        name = os.path.join(vis_dir,f'{suffix}{name}{i}.ply')
+                        )
 
-                if return_render_images:
-                  return render_images
+            if return_render_images:
+              return render_images.detach().cpu().numpy()
 
             visualizer.save_images(
                 render_images.detach().cpu().numpy(),
