@@ -90,7 +90,7 @@ class BaseTrainer(object):
             'epoch': epoch + 1,
             'state_dict': self.model.state_dict(),
             'optim_dict' : self.optimizer.state_dict(),
-            'scheduler': self.scheduler.state_dict()
+            'scheduler': self.scheduler.state_dict() if self.scheduler is not None else None,
             },
             save_path)
 
