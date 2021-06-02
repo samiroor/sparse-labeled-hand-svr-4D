@@ -145,6 +145,13 @@ class Video:
     return frames, frame
 
 
+  def get_nearest_supervised_frames(self, frame, n):
+    supervised = np.array(self._supervised_frames)
+    d = np.abs(supervised - frame)
+    frames = supervised[np.argsort(d)][:n]
+    return list(frames)
+
+
   def get_data_dict(self, handmodel=None, ref_handside=None):
     summary = list()
     for frame in self._all_frames:
