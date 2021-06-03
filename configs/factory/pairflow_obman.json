@@ -8,7 +8,7 @@
     "name":"pairflow",
     "pairflow":{
       "morph_key":"verts3d",
-      "use_base_features":false,
+      "use_tail_features":false,
       "context_base":"fcs",
       #"context_base_kwargs",
       "context_head":"subtract",
@@ -26,7 +26,7 @@
         "scale_factor":0.0001, 
         "trans_factor":100,    
         "off_z":0.4,          
-        "return_base_features":false,
+        "return_tail_features":false,
         "return_encoder_features":false,
         "ncomps":15,
         "use_pca":true,

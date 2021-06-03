@@ -8,7 +8,9 @@ from .unsupervised_singlehand_img_dataset import UnsupervisedShImgDataset
 
 
 """
-Pair Supervised frame Unsupervised frame Single Hand Img dataset!
+Pair Supervised frame Unsupervised frame
+Pickig an Unsupervised frame along with nearest Supervised frame (with at least gap distance)
+Single Hand Img dataset!
 """
 
 
@@ -39,7 +41,7 @@ class PairUnsupSupShImgDataset(UnsupervisedShImgDataset):
                      training=training,
                      **kwargs)
 
-    self.gap = gap # for eval it is not a tuple!
+    self.gap = gap
 
   def __getitem__(self, item):
 
@@ -81,11 +83,11 @@ class PairUnsupSupShImgDataset(UnsupervisedShImgDataset):
     video, unsupervised_frame, frame_status, video_id = self.get_unsupervised_frame(item)
     assert frame_status == 0,'Expected to be picked from unsupervised collection.'
 
-    # set seed
+
     supervised_frame, frame_status = self.pass_supervised_frame(
         video,
         unsupervised_frame,
-        gap=1,
+        gap=0,
         first_next=True,
         )
 

@@ -71,8 +71,8 @@ def get_model(
   context_base_kwargs = cfg.get('context_base_kwargs', {
     'ch_in':c_dim,
     'ch_out':c_dim,
-    'ch_hiddens':[c_dim//2],
-    'activation':'tanh',
+    'ch_hiddens':[c_dim],
+    'activation':'relu',
     'dropout':0.0,
     'flatten':False,
     })

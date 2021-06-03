@@ -56,10 +56,13 @@ class PairFlowTrainer(BaseTrainer):
         display=False,
         calc_metrics=False,
         ):
-        ''' Performs a train step.
-
+        '''
+        Performs a train step.
+            try to predict supervised via warping unsupervised predictions i.e
+            loss signals are defined on supervised ones!
         Args:
-            batch_samples (Easydict): data dictionary
+            batch_samples tuple of (Easydict): data dictionary
+            first item refers to supervised batch, and second item refers to unsupervised ones
         '''
 
         self.model.train()
@@ -141,11 +144,13 @@ class PairFlowTrainer(BaseTrainer):
         return_results=False,
         ):
 
-        ''' Performs an evaluation step.
-
+        '''
+        Performs an evaluation step.
+            Try to infer Unsupervised predictions via warping GT supervised annotations!
         Args:
             batch_samples (Easydict): data dictionary
         '''
+
         self.model.eval()
         device = self.device
         assert len(batch_samples)==2, "Expected supervised & unsupervised batches"
@@ -196,6 +201,9 @@ class PairFlowTrainer(BaseTrainer):
         if calc_metrics:
           eval_dict.update(
               {'metric_flow_infer_u__'+k:v for k, v in self.metric_step(unsupervised_batch, output_batch['flow']['infer_unsupervised']).items()}
+              )
+          eval_dict.update(
+              {'metric_mesh_predictor_u__'+k:v for k, v in self.metric_step(unsupervised_batch, output_batch['mesh_predictor']['unsupervised']).items()}
               )
           eval_dict["samples_number"]=eval_dict['metric_flow_infer_u__samples_number']
 
@@ -285,9 +293,8 @@ class PairFlowTrainer(BaseTrainer):
 
       os.makedirs(vis_dir, exist_ok=True)
 
-      if step_mode == 'infer':
-
-        mesh_predictor_render_images = self._visualize_step(
+      # rendering & saving plys
+      mesh_predictor_render_images_s = self._visualize_step(
             supervised_batch,
             output_batch['mesh_predictor']['supervised'],
             return_render_images=True,
@@ -297,6 +304,20 @@ class PairFlowTrainer(BaseTrainer):
             vis_dir=vis_dir,
             )
 
+      mesh_predictor_render_images_u = self._visualize_step(
+          unsupervised_batch,
+          output_batch['mesh_predictor']['unsupervised'],
+          return_render_images=True,
+          display_render=True,
+          save_ply=True,
+          suffix='mesh_predictor_unsupervised_',
+          vis_dir=vis_dir,
+          )
+
+      title='1st row mesh predictor out on Supervised\n \
+             2nd row mesh predictor out on Unsupervised\n'
+
+      if step_mode == 'infer':
         flow_render_images = self._visualize_step(
             unsupervised_batch,
             output_batch['flow']['infer_unsupervised'],
@@ -307,22 +328,10 @@ class PairFlowTrainer(BaseTrainer):
             vis_dir=vis_dir,
             )
 
-        title='First row mesh predictor output on Supervised images\n \
-               Second row flow Inference output on Unsupervised images i.e \n \
-               (Warped GT Supervised meshes into Unsupervised ones based on image evidence!)'
+        title += '3rd row flow inference out on Unsupervised images i.e \n \
+                  (Warped GT Supervised meshes into Unsupervised ones based on image evidence!)'
 
       elif step_mode=="train":
-
-        mesh_predictor_render_images = self._visualize_step(
-            unsupervised_batch,
-            output_batch['mesh_predictor']['unsupervised'],
-            return_render_images=True,
-            display_render=True,
-            save_ply=True,
-            suffix='mesh_predictor_unsupervised_',
-            vis_dir=vis_dir,
-            )
-
         flow_render_images = self._visualize_step(
             supervised_batch,
             output_batch['flow']['supervised'],
@@ -333,17 +342,22 @@ class PairFlowTrainer(BaseTrainer):
             vis_dir=vis_dir,
             )
 
-        title='First row mesh predictor output on Unsupervised images\n \
-               Second row flow  output on Supervised images i.e \n \
-               (Warped Unsupervised meshes into Supervised ones)'
+        title += '3rd row flow out on Supervised images i.e \n \
+                 (Warped Unsupervised meshes into Supervised ones)'
 
-      render_images = torch.cat([mesh_predictor_render_images, flow_render_images], dim=1)
+      render_images = torch.cat([
+        mesh_predictor_render_images_s,
+        mesh_predictor_render_images_u,
+        flow_render_images,
+        ], dim=1)
+
 
       # make video
       visualizer.save_images(
           render_images.detach().cpu().numpy(),
           title=title,
           save_dir=os.path.join(vis_dir, 'tmp'),
+          fontsize=6,
           )
 
       visualizer.create_video(

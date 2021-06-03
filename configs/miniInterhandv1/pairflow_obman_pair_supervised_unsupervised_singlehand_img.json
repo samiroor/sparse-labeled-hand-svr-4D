@@ -3,14 +3,15 @@
   "training":{
     "vis_freq":10,
     "eval_freq":1,
+    "backup_freq":25,
     "fix_base_batch_norm":true, 
     #"grad_norm_clip": false,
     #"grad_norm_clip_value": 0.0,
     "optimizer":"Adam",
-    "optimizer_kwargs":{"weight_decay":0.0},
-    "lr": 1e-4,
-    "scheduler":"ExponentialLR",
-    "scheduler_kwargs":{"gamma":0.90, "last_epoch":-1},
+    "optimizer_kwargs":{"weight_decay":0.0},#, "mesh_predictor_lr":1e-6},
+    "lr": 1e-3,
+    #"scheduler":"ExponentialLR",
+    #"scheduler_kwargs":{"gamma":0.90, "last_epoch":-1},
     "num_epochs": 100,
     "dataloader":{
       "batch_size":32,
@@ -18,9 +19,9 @@
       "datasets":{
         "pair_supervised_unsupervised_singlehand_img":{
           "split":"train",         
-          "supervise_fraction": 0.015625,
+          "supervise_fraction": 0.0078125,
           "add_first_last_frame": true,
-          "gap":[4,8], 
+          "gap":[1,32], 
           "do_augment":true,
           "labelset": [
             "image",
@@ -34,14 +35,14 @@
   },
   "evaluating":{
     "dataloader":{
-      "batch_size":32,
+      "batch_size":8,
       "workers": 8,
       "datasets":{
-        "pair_supervised_unsupervised_singlehand_img":{
-          "split":"val",          
-          "supervise_fraction": 0.015625,
+        "pair_supervised_unsupervised_singlehand_img":{#loading all Supervised images
+          "split":"train",          
+          "supervise_fraction": 0.0078125,
           "add_first_last_frame": true,
-          "gap":4,
+          "gap":[1,32],
           "do_augment":false,
           "labelset": [
             "image",
@@ -54,22 +55,40 @@
     }
   },
   "testing":{
-    "dataloader":{
-      "batch_size":32,
-      "workers": 8,
-      "datasets":{
-        "pair_supervised_unsupervised_singlehand_img":{
-          "split":"test",          
-          "supervise_fraction": 0.015625,
-          "add_first_last_frame": true,
-          "gap":4,
-          "do_augment":false,
-          "labelset": [
-            "image",
-            "joints3d",
-            "joints3d_rel",
-            "mano_params",
-            "verts3d"]
+    #"dataloader":{
+    #  "batch_size":32,
+    #  "workers": 8,
+    #  "datasets":{
+    #    "pair_unsupervised_supervised_singlehand_img":{#loading all Unsupervised images
+    #      "split":"train",          
+    #      "supervise_fraction": 0.0078125,
+    #      "add_first_last_frame": true,
+    #      "do_augment":false,
+    #      "labelset": [
+    #        "image",
+    #        "joints3d",
+    #        "joints3d_rel",
+    #        "mano_params",
+    #        "verts3d"]
+    #    }
+    #  }
+    #}
+  },
+  "model":{
+    "name":"pairflow",
+    "pairflow":{
+      "mesh_predictor":"obman",
+      "mesh_predictor_kwargs":{
+        "pretrained_file":"exps/miniInterhandv1_obman_supervised_singlehand_img/supervisory_fraction_0.0078125/run/last.pt",
+        "freeze":{
+          "whole":true
+        }
+      },
+      "loss":{
+        "flow":{
+          "verts3d":[0.5,"l2"]
+        },
+        "mesh_predictor":{
         }
       }
     }

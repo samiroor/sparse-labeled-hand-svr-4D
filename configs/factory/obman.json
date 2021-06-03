@@ -12,7 +12,7 @@
       "scale_factor":0.0001, #emprically set
       "trans_factor":100, #emprically set
       "off_z":0.4, # emprically set ( should change for different data (in annot metric))
-      "return_base_features":false,
+      "return_tail_features":false,
       "return_encoder_features":false,
       "adaptor_path":null,# when data is fphab it should be a path,
       "ncomps":15,

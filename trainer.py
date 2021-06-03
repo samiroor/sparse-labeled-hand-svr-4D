@@ -74,7 +74,7 @@ class BaseTrainer(object):
             self.model,
             self.optimizer,
             None if off_scheduler else self.scheduler,
-            allow_partial=True,
+            allow_partial=False,
             )
         epoch = checkpoint['epoch']
         return epoch
@@ -144,7 +144,7 @@ class BaseTrainer(object):
                         )
 
             if return_render_images:
-              return render_images.detach().cpu().numpy()
+              return render_images #should be torch.tensor
 
             visualizer.save_images(
                 render_images.detach().cpu().numpy(),

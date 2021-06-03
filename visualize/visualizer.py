@@ -280,6 +280,7 @@ def render(
 def save_images(
     images,
     figaspect=0.2,
+    fontsize=8,
     get_cmap=True,
     title=None,
     save_dir='tmp',
@@ -301,7 +302,7 @@ def save_images(
       cb, _ = cmap_bar(fig, xlim=[x0, y0-0.02, x1-x0, 0.02])
 
     if title is not None:
-      ax.set_title('{}'.format(title), fontsize=8)
+      ax.set_title('{}'.format(title), fontsize=fontsize)
 
     fig.savefig(
         os.path.join(save_dir,f'{i}.png')

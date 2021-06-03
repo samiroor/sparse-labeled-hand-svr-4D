@@ -8,7 +8,10 @@ from .supervised_singlehand_img_dataset import SupervisedShImgDataset
 
 
 """
-Pair Supervised frame Unsupervised frame Single Hand Img dataset!
+Pair Supervised frame Unsupervised frame
+Picking a Supervised frame along with an Unsupervised frame with at least gap distance
+Single Hand Img dataset!
+
 """
 
 
@@ -39,7 +42,7 @@ class PairSupUnsupShImgDataset(SupervisedShImgDataset):
                      training=training,
                      **kwargs)
 
-    self.gap = gap # for eval it is not a tuple!
+    self.gap = gap
 
   def __getitem__(self, item):
 
@@ -70,7 +73,7 @@ class PairSupUnsupShImgDataset(SupervisedShImgDataset):
         video,
         supervised_frame,
         gap=gap,
-        first_next=random.random() > 0.5,
+        first_next=random.random()>0.5,
         )
 
     assert frame_status == 0,'Expected to be picked from unsupervised collection.'
@@ -81,7 +84,7 @@ class PairSupUnsupShImgDataset(SupervisedShImgDataset):
     video, supervised_frame, frame_status, video_id = self.get_supervised_frame(item)
     assert frame_status == 1,'Expected to be picked from supervised collection.'
 
-    # set seed
+    # set seed to pick same unsupervised frames for every epoch evaluation
     random_state = np.random.RandomState(item)
     gap = self.gap if isinstance(self.gap, int) else random_state.randint(self.gap[0], self.gap[1])
 
@@ -98,7 +101,7 @@ class PairSupUnsupShImgDataset(SupervisedShImgDataset):
 
   def pass_unsupervised_frame(self, video, frame, gap, first_next=True):
     """
-      To have correct setting, note that 
+      To have correct setting, note that
       supervised frames are set as Start + Every 1/supervisory_fraction frames + End
       so to have an unsupervised frame picked logically, given spacing should satisfy
       "spacing < 1/supervisory_fraction"
