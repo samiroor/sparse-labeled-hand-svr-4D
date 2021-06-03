@@ -252,6 +252,11 @@ def count_parameters(model):
     logging.info(table)
     logging.info(f"Total Trainable Params: {total_params}")
 
+
+def get_lr(optimizer):
+  return {f'pg_{i}': param_group['lr'] for i, param_group in enumerate(optimizer.param_groups)}
+
+
 class EarlyStopping:
     """Early stops the training if validation loss doesn't improve after a given patience."""
     def __init__(self, patience=7, verbose=False, delta=0):

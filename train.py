@@ -222,10 +222,15 @@ def train_evaluate(
     for metric in train_metrics:
       all_train_metrics[metric].append(train_metrics[metric])
 
-    # lr schedular & writer
+    # lr schedular 
     if trainer.scheduler is not None:
       trainer.scheduler.step()
-      writer.add_scalar('learning_rate', trainer.scheduler.get_lr()[0], epoch)
+
+    # lr writer
+    lrs = utils.get_lr(trainer.optimizer)
+    for k,v in lrs.items():
+      writer.add_scalar(f'learning_rate_{k}', v, epoch)
+
     for k,v in train_metrics.items():
       writer.add_scalar('train_'+k, v, epoch)
 
@@ -309,8 +314,9 @@ if __name__ == '__main__':
   assert os.path.isfile(json_path), f'Not a json configuration file found at "{json_path}"!'
 
   cfg = utils.get_config(json_path)
-  with open(os.path.join(args.exp_dir, 'opt.json'), 'w') as fp:
-    json.dump(cfg, fp, indent=2, sort_keys=True)
+  if not (args.eval_only or args.test_only):
+    with open(os.path.join(args.exp_dir, 'opt.json'), 'w') as fp:
+      json.dump(cfg, fp, indent=2, sort_keys=True)
 
   # log file
   exp_dir = os.path.join(args.exp_dir,'run')
@@ -466,7 +472,7 @@ if __name__ == '__main__':
 
     # save eval config
     with open(os.path.join(exp_dir, 'eval_opt.json'), 'w') as fp:
-      json.dump(cfg[f'{"testing" if args.test_only else "evaluating"}'],
+      json.dump(cfg,
                 fp,
                 indent=2,
                 sort_keys=True)
