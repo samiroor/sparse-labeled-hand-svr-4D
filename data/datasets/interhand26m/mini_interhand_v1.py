@@ -3,6 +3,7 @@ import json
 import glob
 import pickle
 import hashlib
+import logging
 import numpy as np
 from collections import defaultdict
 from pycocotools.coco import COCO

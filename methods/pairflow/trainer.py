@@ -357,6 +357,7 @@ class PairFlowTrainer(BaseTrainer):
           render_images.detach().cpu().numpy(),
           title=title,
           save_dir=os.path.join(vis_dir, 'tmp'),
+          figaspect=0.6,
           fontsize=6,
           )
 
