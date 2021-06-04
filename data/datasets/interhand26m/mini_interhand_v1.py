@@ -195,10 +195,10 @@ class MiniInterHand_v1(Videos):
     self.num_supervised_videos_frames = len(self.list_supervised_videos_frames)
     self.num_unsupervised_videos_frames = len(self.list_unsupervised_videos_frames)
 
-    print(f"Mini-InterHand2.6M-v1:{self.split}\n \
-            num_videos_frames:{self.num_videos_frames}\n \
-            num_supervised_videos_frames:{self.num_supervised_videos_frames}\n \
-            num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
+    logging.info(f"Mini-InterHand2.6M-v1:{self.split}\n \
+                   num_videos_frames:{self.num_videos_frames}\n \
+                   num_supervised_videos_frames:{self.num_supervised_videos_frames}\n \
+                   num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
 
     # images features
     if self.images_features is not None:

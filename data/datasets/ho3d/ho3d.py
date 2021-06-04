@@ -1,5 +1,6 @@
 import os
 import glob
+import logging
 from collections import defaultdict
 
 from . import ho3d_utils
@@ -125,10 +126,10 @@ class HO3D(Videos):
     self.num_supervised_videos_frames = len(self.list_supervised_videos_frames)
     self.num_unsupervised_videos_frames = len(self.list_unsupervised_videos_frames)
 
-    print(f"HO3D:{self.split}\n \
-            num_videos_frames:{self.num_videos_frames}\n \
-            num_supervised_videos_frames:{self.num_supervised_videos_frames}\n \
-            num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
+    logging.info(f"HO3D:{self.split}\n \
+                   num_videos_frames:{self.num_videos_frames}\n \
+                   num_supervised_videos_frames:{self.num_supervised_videos_frames}\n \
+                   num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
 
     # images features
     if self.images_features is not None:

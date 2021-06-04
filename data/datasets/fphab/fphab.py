@@ -1,6 +1,7 @@
 import os
 import glob
 import pickle
+import logging
 import numpy as np
 
 from . import fphab_utils
@@ -161,10 +162,10 @@ class FPHAB(Videos):
     self.num_supervised_videos_frames = len(self.list_supervised_videos_frames)
     self.num_unsupervised_videos_frames = len(self.list_unsupervised_videos_frames)
 
-    print(f"FPHAB:{self.split}\n \
-            num_videos_frames:{self.num_videos_frames}\n \
-            num_supervised_videos_frames:{self.num_supervised_videos_frames}\n \
-            num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
+    logging.info(f"FPHAB:{self.split}\n \
+                   num_videos_frames:{self.num_videos_frames}\n \
+                   num_supervised_videos_frames:{self.num_supervised_videos_frames}\n \
+                   num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
 
     # features
     if self.images_features is not None:

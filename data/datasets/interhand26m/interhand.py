@@ -3,6 +3,7 @@ import json
 import glob
 import pickle
 import hashlib
+import logging
 import numpy as np
 from collections import defaultdict
 from pycocotools.coco import COCO
@@ -177,7 +178,7 @@ class InterHand(Videos):
 
     # get some video folders
     if use_cache and os.path.exists(cache_path):
-      print(f'Loading cache data *** {cache_path}')
+      logging.info(f'Loading cache data *** {cache_path}')
       with open(cache_path, 'rb') as f:
         video_folders = pickle.load(f)
     else:
@@ -222,10 +223,10 @@ class InterHand(Videos):
     self.num_supervised_videos_frames = len(self.list_supervised_videos_frames)
     self.num_unsupervised_videos_frames = len(self.list_unsupervised_videos_frames)
 
-    print(f"InterHand2.6M:{self.split}\n \
-            num_videos_frames:{self.num_videos_frames}\n \
-            num_supervised_videos_frames:{self.num_supervised_videos_frames}\n \
-            num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
+    logging.info(f"InterHand2.6M:{self.split}\n \
+                   num_videos_frames:{self.num_videos_frames}\n \
+                   num_supervised_videos_frames:{self.num_supervised_videos_frames}\n \
+                   num_unsupervised_videos_frames:{self.num_unsupervised_videos_frames}")
 
     # images features
     if self.images_features is not None:
@@ -254,7 +255,7 @@ class InterHand(Videos):
     return flag
 
   def get_video_folders(self):
-    print(f"Load annotation from {os.path.join(self.annot_path, self.annot_subset)}")
+    logging.info(f"Load annotation from {os.path.join(self.annot_path, self.annot_subset)}")
     db = COCO(
           os.path.join(
           self.annot_path,
