@@ -214,7 +214,7 @@ def train_evaluate(
         train_loader,
         epoch,
         calc_metrics=True,
-        display=(epoch % vis_freq==0),
+        display=(epoch+1) % vis_freq==0,
         vis_dir=os.path.join(exp_dir,'figs',f'train-epoch{epoch}'),
         )
 
@@ -247,7 +247,7 @@ def train_evaluate(
           vis_data,
           epoch,
           calc_metrics=True,
-          display=(epoch % vis_freq==0),
+          display=(epoch+1) % vis_freq==0,
           vis_dir=os.path.join(exp_dir,'figs',f'val_epoch{epoch}'))
 
       # save last metrics
