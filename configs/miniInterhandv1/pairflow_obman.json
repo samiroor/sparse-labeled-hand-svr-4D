@@ -30,7 +30,8 @@
       },
       "flow":"resflow",
       "flow_kwargs":{
-        "T":3
+        "T":3,
+        "displacement":0.3
       },
       "mesh_predictor":"obman",
       "mesh_predictor_kwargs":{
