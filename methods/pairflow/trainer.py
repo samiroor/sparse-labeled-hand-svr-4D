@@ -122,7 +122,13 @@ class PairFlowTrainer(BaseTrainer):
           train_dict.update(
               {'metric_flow_s__'+k:v for k,v in self.metric_step(supervised_batch, output_batch['flow']['supervised']).items()}
               )
-
+          train_dict.update(
+              {'metric_mesh_predictor_s__'+k:v for k, v in self.metric_step(supervised_batch, output_batch['mesh_predictor']['supervised']).items()}
+              )
+          train_dict.update(
+              {'metric_mesh_predictor_u__'+k:v for k, v in self.metric_step(unsupervised_batch, output_batch['mesh_predictor']['unsupervised']).items()}
+              )
+ 
         if display:
           self.visualize_step(
               (supervised_batch, unsupervised_batch),
@@ -204,6 +210,9 @@ class PairFlowTrainer(BaseTrainer):
               )
           eval_dict.update(
               {'metric_mesh_predictor_u__'+k:v for k, v in self.metric_step(unsupervised_batch, output_batch['mesh_predictor']['unsupervised']).items()}
+              )
+          eval_dict.update(
+              {'metric_mesh_predictor_s__'+k:v for k, v in self.metric_step(supervised_batch, output_batch['mesh_predictor']['supervised']).items()}
               )
           eval_dict["samples_number"]=eval_dict['metric_flow_infer_u__samples_number']
 
