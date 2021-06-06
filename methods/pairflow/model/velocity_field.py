@@ -18,7 +18,7 @@ class VelocityField(nn.Module):
     super().__init__()
 
     self.positional_encoder = PositionalEncoding() if use_positional_encoding else None
-    in_dim = in_dim if self.positional_encoder is None else positional_encoder.get_dim(in_dim)
+    in_dim = in_dim if self.positional_encoder is None else self.positional_encoder.get_dim(in_dim)
     out_dim = out_dim
 
     self.n_blocks = n_blocks
@@ -34,7 +34,6 @@ class VelocityField(nn.Module):
     x: [B,V,3]
     cond: [B,c_dim]
     """
-    # TODO check if PE works with 3D tensors
     if self.positional_encoder:
       x = self.positional_encoder(x)
     net = self.fc_p(x)
