@@ -85,7 +85,10 @@ class PairFlowTrainer(BaseTrainer):
         output_batch = self.model({
           'supervised':supervised_batch,
           'unsupervised':unsupervised_batch,
-          })
+          },
+          fwd=True,
+          invert=True,
+          )
 
         # compute loss
         loss = torch.tensor(0.).to(device); loss_dict = dict()
@@ -99,6 +102,17 @@ class PairFlowTrainer(BaseTrainer):
               )
           loss += loss_flow
           loss_dict.update({'loss_flow_s__'+k:v for k, v in loss_flow_dict.items()})
+
+        # flow loss in backward direction
+        if bool(self.loss_cfg.flow_bkw):
+          loss_flow_bkw, loss_flow_bkw_dict = self._compute_loss(
+              output_batch['mesh_predictor']['unsupervised'],
+              output_batch['flow']['unsupervised'],
+              self.loss_cfg.flow_bkw,
+              )
+          loss += loss_flow_bkw
+          loss_dict.update({'loss_flow_bkw_u__'+k:v for k, v in loss_flow_bkw_dict.items()})
+
 
         # mesh predictor loss
         if bool(self.loss_cfg.mesh_predictor):
@@ -175,6 +189,7 @@ class PairFlowTrainer(BaseTrainer):
             'supervised':supervised_batch,
             'unsupervised':unsupervised_batch,
             },
+            fwd=False,
             infer=True,
             )
 

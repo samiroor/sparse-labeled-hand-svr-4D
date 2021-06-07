@@ -63,7 +63,7 @@ class PairFlow(nn.Module):
     self.adaptor = self.mesh_predictor.adaptor
 
 
-  def forward(self, input_batch, invert=False, infer=False):
+  def forward(self, input_batch, fwd=True, invert=False, infer=False):
     output_batch = None
     assert 'supervised' in input_batch
     assert 'unsupervised' in input_batch
@@ -95,7 +95,7 @@ class PairFlow(nn.Module):
         })
 
     # inverse supervised ==> Unsupervised
-    elif invert:
+    if invert:
       context = self.context_head(
           unsupervised_output[self.feature_key],
           supervised_output[self.feature_key],
@@ -110,7 +110,7 @@ class PairFlow(nn.Module):
         })
 
     # Unsupervised ==> supervised
-    else:
+    if fwd:
       context = self.context_head(
           supervised_output[self.feature_key],
           unsupervised_output[self.feature_key],
