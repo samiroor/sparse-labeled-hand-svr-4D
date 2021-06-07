@@ -77,6 +77,7 @@ class PairFlow(nn.Module):
           'supervised':supervised_output,
           'unsupervised':unsupervised_output,
           },
+        'flow':{},
         }
 
     # inference GT supervised ==> Unsupervised
@@ -88,10 +89,8 @@ class PairFlow(nn.Module):
 
       morphed_output = self.morph(input_batch['supervised'], context)
 
-      output_batch.update({
-        'flow':{
-          'infer_unsupervised':morphed_output,
-          },
+      output_batch['flow'].update({
+        'infer_unsupervised':morphed_output,
         })
 
     # inverse supervised ==> Unsupervised
@@ -103,10 +102,8 @@ class PairFlow(nn.Module):
 
       morphed_output = self.morph(supervised_output, context)
 
-      output_batch.update({
-        'flow':{
-          'unsupervised':morphed_output,
-          },
+      output_batch['flow'].update({
+        'unsupervised':morphed_output,
         })
 
     # Unsupervised ==> supervised
@@ -118,10 +115,8 @@ class PairFlow(nn.Module):
 
       morphed_output = self.morph(unsupervised_output, context)
 
-      output_batch.update({
-        'flow':{
-          'supervised':morphed_output,
-          },
+      output_batch['flow'].update({
+        'supervised':morphed_output,
         })
 
     return output_batch
