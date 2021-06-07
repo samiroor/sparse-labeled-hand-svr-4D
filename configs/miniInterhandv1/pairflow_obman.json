@@ -68,6 +68,10 @@
           #"verts3d":[0.5,"l2"],
           #"joints3d":[0.5,"l2"]
         },
+        "flow_bkw":{
+          #"verts3d":[0.5,"l2"],
+          #"joints3d":[0.5,"l2"]
+        },
         "mesh_predictor":{
           #"joints3d":[0.5,"l2"],
           #"objverts3d":[0.5,"l2"],

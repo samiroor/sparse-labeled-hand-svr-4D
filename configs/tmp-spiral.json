@@ -1,0 +1,63 @@
+{ 
+  "inherit_from":null, # when you run add a data json path
+  "training":{
+    "vis_freq":1,
+    "eval_freq":1,
+    "fix_base_batch_norm":true, 
+    #"grad_norm_clip": false,
+    #"grad_norm_clip_value": 0.0,
+    "optimizer":"Adam",
+    "optimizer_kwargs":{"weight_decay":0.0},
+    "lr": 1e-4,
+    "scheduler":"ExponentialLR",
+    "scheduler_kwargs":{"gamma":0.95, "last_epoch":-1},
+    "num_epochs": 100,
+    "dataloader":{
+      "batch_size":32,
+      "workers": 8,
+      "datasets":{} #should come from parent config
+    }
+  },
+  "evaluating":{
+    "dataloader":{
+      "batch_size":32,
+      "workers": 8,
+      "datasets":{}
+    }
+  },
+  "metrics":{
+    "names":["hand3d"],
+    "ops":{"xyz_mean3d":"min"}#{"loss": "min"}
+  },
+  "model":{
+    "name":"spiral",
+    "spiral":{
+      "template_file":"misc/spiral/template.obj",
+      "downsample_file":"misc/spiral/downsample_2222.pkl",
+      "ds_factors":[2,2,2,2],
+      "spiral_length":[8,8,8,8],
+      "spiral_dilation":[1,1,1,1],
+      "spiral_filters":[32,32,16,16],
+      "c_dim":512,
+      "h_dim":512,
+      "scale_factor":0.0001,
+      "trans_factor":100,
+      "return_spiral_features":false,
+      "return_encoder_features":false,
+      "use_adaptor":true, # when data is fphab it should be true,
+      "adaptor_path":null,
+      "ref_side":"right",
+      "center_idx":0,
+      "annot_metric":"m",
+      "encoder":"resnet18",
+      "spiral_base":"fcs",
+      "st_head":"fcs",
+      "obj_st_head":null,
+      "loss":{
+        "verts3d":[0.5,"l2"],
+        "joints3d":[0.5,"l2"],
+        "objverts3d":[0.5,"l2"]
+      }
+    }
+  }
+}

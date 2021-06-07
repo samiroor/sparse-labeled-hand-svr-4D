@@ -1,0 +1,47 @@
+{
+  "inherit_from":null, # when you run add a data spec json path
+  "metrics":{
+    "names":["hand3d"],
+    "ops":{"xyz_mean3d":"min"}#{"loss": "min"}
+  },
+  "training":{
+    "calc_mean_std":true
+  },
+  "model":{
+    "name":"graph",
+    "graph":{
+      "c_dim":512,
+      "h_dim":512,
+      "scale_factor":0.0001,
+      "trans_factor":100,
+      "off_z":0.4,
+      "return_tail_features":false,
+      "return_encoder_features":false,
+      "adaptor_path":null,
+      "ref_side":"right",
+      "center_idx":0,
+      "annot_metric":"m",
+      "encoder":"resnet18",
+      "graph_base":"fcs",
+      "graph_base_kwargs":{
+        "ch_in":512, #c_dim,
+        "ch_out":512, #h_dim,
+        "ch_hiddens":[512],
+        "activation":"relu",
+        "dropout":0.0,
+        "flatten":false
+      },
+      "ds_factors":[2,2,2,2],
+      "graph_block_num":5,
+      "st_head":"fcs",
+      "obj_st_head":null,
+      "mean_file":"misc/graph/mininterhandv1_mean_meter.npy", #better to have in exp_dir because of variable supervision fraction
+      "std_file":"misc/graph/mininterhandv1_std_meter.npy",
+      "reference_mesh_file":"misc/graph/template_right_meter.obj",
+      "downsample_file":"misc/graph/downsample_{}.pkl",
+      "loss":{
+        "verts3d":[0.5,"l2"]
+      }
+    }
+  }
+}
