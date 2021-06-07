@@ -87,7 +87,7 @@ class PairFlowTrainer(BaseTrainer):
           'unsupervised':unsupervised_batch,
           },
           fwd=True,
-          invert=True,
+          invert=bool(self.loss_cfg.flow_bkw),
           )
 
         # compute loss
