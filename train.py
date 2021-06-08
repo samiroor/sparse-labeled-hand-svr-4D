@@ -424,9 +424,8 @@ if __name__ == '__main__':
   ### metrics_fns ###
   metrics_fns = builder.get_metrics_fns(cfg['metrics'])
 
-
   # metrics operations
-  metrics_ops = cfg['metrics'].get('ops', {'loss':'min'})
+  metrics_ops = cfg['metrics'].get('ops', {'loss':'min'}).copy()
   for k,v in metrics_ops.items():
     metrics_ops[k] = min if v=="min" else max
 
