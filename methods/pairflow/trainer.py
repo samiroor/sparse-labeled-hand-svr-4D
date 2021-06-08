@@ -89,9 +89,8 @@ class PairFlowTrainer(BaseTrainer):
           'unsupervised':unsupervised_batch,
           },
           fwd=True,
-          invert=bool(self.loss_cfg.flow_bkw),
+          invert=bool(self.loss_cfg.flow_bkw) or bool(self.loss_cfg.flow_bkw_tfeq),
           )
-
         ## compute loss
         loss, loss_dict = self.compute_loss(
             supervised_batch,
@@ -176,7 +175,7 @@ class PairFlowTrainer(BaseTrainer):
             unsupervised_batch,
             output_batch,
             step_mode='infer',
-            loss_types=['mesh_predictor_u', 'flow_infer_u'],
+            loss_types=['flow_infer_u'],
             )
 
           eval_dict = loss_dict
@@ -239,6 +238,7 @@ class PairFlowTrainer(BaseTrainer):
 
         ### on mesh predictor ###
         if 'mesh_predictor_s' in loss_types:
+          assert bool(self.loss_cfg.mesh_predictor), 'Expected mesh_predictor loss config'
           loss_list.append([
             'mesh_predictor_s_',
             supervised_batch,
@@ -247,6 +247,7 @@ class PairFlowTrainer(BaseTrainer):
               ])
 
         if 'mesh_predictor_u' in loss_types:
+          assert bool(self.loss_cfg.mesh_predictor), 'Expected mesh_predictor loss config'
           assert step_mode=='infer','Expected inference step to use unsupervised batch'
           loss_list.append([
             'mesh_predictor_u_',
@@ -262,12 +263,27 @@ class PairFlowTrainer(BaseTrainer):
           tf_eq = LOSS.TfEq(
               batch_size=batch_size,
               input_hw=(h,w),
+              device=self.device,
               )
 
           tf_eq.set_transform_mats()
 
           supervised_batch_tx = tf_eq.transform(supervised_batch)
           unsupervised_batch_tx = tf_eq.transform(unsupervised_batch)
+          if False:#True:#DEBUG:
+            debug_dir='debug-tfeq'
+            os.makedirs(debug_dir, exist_ok=True)
+            # rendering & saving plys
+            self._visualize_step(
+                supervised_batch_tx,
+                supervised_batch_tx,
+                return_render_images=False,
+                display_render=True,
+                display_skeleton=True,
+                save_ply=False,
+                suffix='debug_tfeq',
+                vis_dir=debug_dir,
+                )
 
           ftx_output = self.model({
             'supervised':supervised_batch_tx,
@@ -278,6 +294,7 @@ class PairFlowTrainer(BaseTrainer):
             )
 
           if 'mesh_predictor_tfeq_u' in loss_types:
+            assert bool(self.loss_cfg.mesh_predictor_tfeq),'Expected mesh_predictor_tfeq loss config'
             ftx = ftx_output['mesh_predictor']['unsupervised']
             tfx = tf_eq.transform(output_batch['mesh_predictor']['unsupervised'])
 
@@ -288,19 +305,21 @@ class PairFlowTrainer(BaseTrainer):
               self.loss_cfg.mesh_predictor_tfeq,
               ])
 
-          if 'flow_tfeq_u' in loss_types:
+          if 'flow_bkw_tfeq_u' in loss_types:
+            assert bool(self.loss_cfg.flow_bkw_tfeq),'Expected flow_tfeq loss config'
             ftx = ftx_output['flow']['unsupervised']
             tfx = tf_eq.transform(output_batch['flow']['unsupervised'])
 
             loss_list.append([
-              'flow_tfeq_u_',
+              'flow_bkw_tfeq_u_',
               ftx,
               tfx,
-              self.loss_cfg.flow_tfeq,
+              self.loss_cfg.flow_bkw_tfeq,
               ])
 
         ### flow ###
-        if 'flow_s' in loss_modes:
+        if 'flow_s' in loss_types:
+          assert bool(self.loss_cfg.flow),'Expected flow loss config'
           loss_list.append([
             'flow_s_',
             supervised_batch,
@@ -308,7 +327,8 @@ class PairFlowTrainer(BaseTrainer):
             self.loss_cfg.flow,
             ])
 
-        if 'flow_bkw_u' in loss_modes:
+        if 'flow_bkw_u' in loss_types:
+          assert bool(self.loss_cfg.flow_bkw),'Expected flow_bkw loss config'
           loss_list.append([
             'flow_bkw_u_',
             output_batch['mesh_predictor']['unsupervised'],
@@ -316,12 +336,13 @@ class PairFlowTrainer(BaseTrainer):
             self.loss_cfg.flow_bkw,
             ])
 
-        if 'flow_infer_u'in loss_modes:
+        if 'flow_infer_u'in loss_types:
+          assert bool(self.loss_cfg.flow),'Expected flow loss config'
           assert step_mode=='infer','Expected inference step to use unsupervised batch'
           loss_list.append([
             'flow_infer_u_',
             unsupervised_batch,
-            output_batch['flow']['unsupervised'],
+            output_batch['flow']['infer_unsupervised'],
             self.loss_cfg.flow,
             ])
 

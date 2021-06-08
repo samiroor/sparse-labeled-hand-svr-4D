@@ -4,10 +4,11 @@ import torch
 import torch.nn as nn
 from torch.distributions.uniform import Uniform
 from torch.distributions.normal import Normal
+
 import kornia
+import kornia.geometry.conversions as kgc
 
-from data import fields as Fls
-
+from data import Fields as Fls
 
 
 class TfEq(nn.Module):
@@ -21,11 +22,12 @@ class TfEq(nn.Module):
   def __init__(
       self,
       batch_size=8,
-      input_hw=(256,256)
+      input_hw=(256,256),
       max_angle=1.57,
       scale_jitter=0.01,
       center_jitter=0.1,
       transform_type='rotation',
+      device='cpu',
       ):
 
     super().__init__()
@@ -36,7 +38,7 @@ class TfEq(nn.Module):
     self.scale_jitter = scale_jitter
     self.center_jitter = center_jitter
     self.transform_type = transform_type
-
+    self.device = device
 
   def set_transform_mats(
       self,
@@ -52,7 +54,7 @@ class TfEq(nn.Module):
     input_hw = self.input_hw
 
     # scale
-    scale = torch.ones(batch_size, 1) * max(input_hw)
+    scale = torch.ones(batch_size, ) * max(input_hw)
     if 'scale' in self.transform_type:
       scale_jitter = (Normal(0, 1).sample((batch_size,)) + 1.) * self.scale_jitter
       sacle_jitter = sacle_jitter.clamp(1 - self.scale_jitter, 1 + self.scale_jitter)
@@ -72,12 +74,18 @@ class TfEq(nn.Module):
       rot = Uniform(-self.max_angle, self.max_angle).sample((batch_size,))
 
     # get transformation
-    self.affinetrans, self.post_rot_trans, self.rot_mat = get_affine_transform(
+    affinetrans, post_rot_trans, rot_mat = get_affine_transform(
         center,
         scale,
         rot,
         input_hw,
         )
+
+    self.affinetrans = affinetrans.to(self.device)
+    self.post_rot_trans = post_rot_trans.to(self.device)
+    self.rot_mat = rot_mat.to(self.device)
+
+
 
   def transform(
       self,
@@ -113,18 +121,29 @@ class TfEq(nn.Module):
 
     if Fls.camsintr in input_batch:
       camintr = self.rot_mat @ input_batch[Fls.camsintr] @ self.rot_mat.transpose(2, 1)
-      output_batch[Fls.camsintr] = self.post_rot_trans @ input_batch[Fls.camsintr]
+      output_batch[Fls.camsintr] = self.post_rot_trans @ camintr
 
     for _ in [
         Fls.mano_poses,
         Fls.mano_poses_quat,
         Fls.mano_params,
         ]:
-      pass #TODO
+      if _ in input_batch:
+        if _ == Fls.mano_poses_quat:
+          vp = input_batch[_][:, :4]
+          vp_tf = kgc.rotation_matrix_to_quaternion(
+              self.rot_mat @ kgc.quaternion_to_rotation_matrix(vp)
+              )
+          output_batch[_][:, :4] = vp_tf
+
+        else:
+          vp = input_batch[_][:, :3]
+          vp_tf = kgc.rotation_matrix_to_angle_axis(
+              self.rot_mat @ kgc.angle_axis_to_rotation_matrix(vp)
+              )
+          output_batch[_][:, :3] = vp_tf
 
     return output_batch
-
-
 
 
 def get_affine_transform(
@@ -229,7 +248,7 @@ def transform_coords(pts, affine_trans, invert=False):
 
     if invert:
         affine_trans = affine_trans.pinverse()
-    hom2d = torch.cat([pts, torch.ones(batch_size, np, 1)], dim=-1)
+    hom2d = torch.cat([pts, torch.ones(batch_size, np, 1, device=pts.device)], dim=-1)
     transformed_rows = (affine_trans @ hom2d.transpose(2,1)).transpose(2,1) [:, :, :2]
     return transformed_rows
 
@@ -241,8 +260,8 @@ def transform_img(img, affine_trans, res):
   """
   with torch.no_grad():
     img_tf = kornia.warp_affine(
-        img,
-        affine_trans,
-        dsize=res,
-        )
+      img,
+      affine_trans[:, :2, :],
+      dsize=res,
+      )
   return img_tf

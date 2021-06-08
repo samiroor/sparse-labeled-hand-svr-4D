@@ -48,7 +48,7 @@
         "obj_st_head":null
       },
       "loss":{
-        "loss_types":[],#["flow_s","flow_bkw_u","flow_tfeq_u","mesh_predictor_s", "mesh_predictor_tfeq_u"],
+        "loss_types":["flow_s"],#["flow_s","flow_bkw_u","flow_bkw_tfeq_u","mesh_predictor_s", "mesh_predictor_tfeq_u"],
         "flow":{
           #"verts3d":[0.5,"l2"],
           #"joints3d":[0.5,"l2"]
@@ -57,7 +57,7 @@
           #"verts3d":[0.5,"l2"],
           #"joints3d":[0.5,"l2"]
         },
-        "flow_tfeq":{
+        "flow_bkw_tfeq":{
           #"verts3d":[0.5,"l2"],
           #"joints3d":[0.5,"l2"]
         },
