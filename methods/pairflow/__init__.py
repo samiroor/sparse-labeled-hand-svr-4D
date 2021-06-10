@@ -58,13 +58,24 @@ def get_model(
   # shortcuts
   morph_key = cfg.get('morph_key', 'verts3d')
   use_tail_features = cfg.get('use_tail_features', False)
+  use_encoder_tail_features = cfg.get('use_encoder_tail_features', False)
 
   # mesh predictor
   mesh_predictor = cfg.get('mesh_predictor', 'obman')
   mesh_predictor_kwargs = cfg.mesh_predictor_kwargs
   assert bool(mesh_predictor_kwargs), "Expected a config for mesh_predictor!"
-
-  c_dim = mesh_predictor_kwargs.h_dim if use_tail_features else mesh_predictor_kwargs.c_dim
+  if use_tail_features:
+    assert mesh_predictor_kwargs.return_tail_features
+    c_dim = mesh_predictor_kwargs.h_dim
+    feature_key = 'tail_features'
+  elif use_encoder_tail_features:
+    assert mesh_predictor_kwargs.return_encoder_tail_features
+    c_dim = mesh_predictor_kwargs.c_dim + mesh_predictor_kwargs.h_dim
+    feature_key = 'encoder_tail_features'
+  else:
+    assert mesh_predictor_kwargs.return_encoder_features
+    c_dim = mesh_predictor_kwargs.c_dim
+    feature_key = 'encoder_features'
 
   # context 
   context_base = cfg.get('context_base', 'fcs')
@@ -83,6 +94,8 @@ def get_model(
   # flow
   velocity_field = cfg.get('velocity_field', 'resblock')
   velocity_field_kwargs = cfg.get('velocity_field_kwargs', {
+    'in_dim':3,
+    'out_dim':3,
     'c_dim':c_dim,
     'hidden_size':c_dim,
     'activation':'tanh',
@@ -111,7 +124,7 @@ def get_model(
       context_head=context_head,
       flow=flow,
       morph_key=morph_key,
-      use_tail_features=use_tail_features,
+      feature_key=feature_key,
       **kwargs,
       )
 

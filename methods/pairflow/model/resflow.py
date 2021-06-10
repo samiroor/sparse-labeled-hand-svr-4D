@@ -13,8 +13,10 @@ class ResFlow(nn.Module):
     """x: [B,V,3]
        cond: [B,d]
     """
-    # displace only in x direction 
-    x = x - x.new_tensor([[self.displacement,0,0]])
+    # displace only in x direction
+    displacement = torch.zeros_like(x)
+    displacement[:,:,-1] = self.displacement
+    x = x - displacement #x.new_tensor([[self.displacement,0,0]])
     y_hat = self.forward_order4(x, cond)
     # TODO need intermediate?
     return y_hat[-1]

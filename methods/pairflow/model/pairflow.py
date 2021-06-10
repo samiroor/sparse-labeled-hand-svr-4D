@@ -13,7 +13,7 @@ class PairFlow(nn.Module):
       context_head,
       flow,
       morph_key="verts3d", #doesnot work on relative
-      use_tail_features=False,
+      feature_key='encoder_features',
       **kwargs,
       ):
 
@@ -55,9 +55,21 @@ class PairFlow(nn.Module):
     self.context_head = context_head
     self.flow = flow
 
-    self.morph_key = Fls.verts3d if morph_key =="verts3d" else Fls.verts3d_rel
-    self.feature_key = Fls.tail_features if use_tail_features else Fls.encoder_features
-    assert (use_tail_features and self.mesh_predictor.return_tail_features) or self.mesh_predictor.return_encoder_features, "Expected mesh_predictor return some features!"
+    if morph_key == "verts3d":
+      self.morph_key = Fls.verts3d
+    elif morph_key =="verts3d_rel":
+      self.morph_key = Fls.verts3d_rel
+    elif morph_key == "mano_params":
+      self.morph_key = Fls.mano_params
+    else:
+      raise NotImplementedError()
+
+    if feature_key == "tail_features":
+      self.feature_key = Fls.tail_features
+    elif feature_key == "encoder_tail_features":
+      self.feature_key = Fls.encoder_tail_features
+    else:
+      self.feature_key = Fls.encoder_features
 
     self.center_idx = self.mesh_predictor.center_idx
     self.adaptor = self.mesh_predictor.adaptor
@@ -123,9 +135,21 @@ class PairFlow(nn.Module):
 
 
   def morph(self, input_batch, context):
-    output_batch = None
     assert all(_ in input_batch for _ in (self.morph_key, ))
 
+    if self.morph_key in (Fls.verts3d,):
+      output_batch = self.morph_verts(input_batch, context)
+
+    elif self.morph_key in (Fls.mano_params, ):
+      output_batch = self.morph_mano_params(input_batch, context)
+
+    else:
+      raise NotImplementedError()
+
+    return output_batch
+
+
+  def morph_verts(self, input_batch, context):
     points = input_batch[self.morph_key]
     morphed_points = self.flow(points, context)
 
@@ -139,14 +163,53 @@ class PairFlow(nn.Module):
       joints3d = adapt_joints
       joints3d_rel = joints3d - joints3d[:, self.center_idx].unsqueeze(1)
       verts3d_rel = verts3d - joints3d[:, self.center_idx].unsqueeze(1)
+
     else:
       raise NotImplementedError()
 
-    output_batch = {
+    return {
         Fls.verts3d: verts3d,
         Fls.verts3d_rel: verts3d_rel,
         Fls.joints3d: joints3d,
         Fls.joints3d_rel: joints3d_rel,
         }
-    return output_batch
 
+
+  def morph_mano_params(self, input_batch, context):
+    if self.morph_key == Fls.mano_params:
+
+      mano_params = input_batch[self.morph_key]
+      pose, shape, root = mano_params[:, :-13], mano_params[:, -13:-3], mano_params[:, -3:]
+
+      points = torch.cat([pose, root], dim=-1).unsqueeze(1)
+      morphed_points = self.flow(points, context)
+
+      morphed_root = morphed_points[:,:, -3:].squeeze()
+      morphed_pose = morphed_points[:, :, :-3].squeeze()
+      morphed_shape = shape
+
+      verts3d_rel, joints3d_rel = self.mesh_predictor.manolayer(
+          th_pose_coeffs=morphed_pose,
+          th_betas=morphed_shape,
+          )
+
+      # annotation metric
+      if self.mesh_predictor.annot_metric == "m":
+        verts3d_rel /= 1000.0
+        joints3d_rel /= 1000.0
+
+      joints3d = joints3d_rel + morphed_root.unsqueeze(1)
+      verts3d = verts3d_rel + morphed_root.unsqueeze(1)
+
+    else:
+      raise NotImplementedError()
+
+    return {
+        Fls.verts3d: verts3d,
+        Fls.verts3d_rel: verts3d_rel,
+        Fls.joints3d: joints3d,
+        Fls.joints3d_rel: joints3d_rel,
+        Fls.mano_poses: morphed_pose,
+        Fls.mano_shapes: morphed_shape,
+        Fls.mano_params: torch.cat([morphed_pose, morphed_shape, morphed_root], dim=-1)
+        }
