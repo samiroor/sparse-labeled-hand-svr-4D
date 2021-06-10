@@ -99,7 +99,10 @@ class PairFlow(nn.Module):
           supervised_output[self.feature_key],
           )
 
-      morphed_output = self.morph(input_batch['supervised'], context)
+      morphed_output = self.morph(
+          input_batch['supervised'] if self.morph_key not in (Fls.mano_params,) else supervised_output,
+          context,
+          )
 
       output_batch['flow'].update({
         'infer_unsupervised':morphed_output,
