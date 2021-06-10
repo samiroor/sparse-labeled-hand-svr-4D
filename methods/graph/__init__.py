@@ -38,6 +38,7 @@ def get_model(
 
   return_tail_features = cfg.get('return_tail_features', False)
   return_encoder_features = cfg.get('return_encoder_features', False)
+  return_encoder_tail_features = cfg.get('return_encoder_tail_features', False)
   adaptor_path = cfg.get('adaptor_path', None)
 
   annot_metric = cfg.get('annot_metric', 'm')
@@ -125,6 +126,7 @@ def get_model(
       off_z=off_z,
       return_tail_features=return_tail_features,
       return_encoder_features=return_encoder_features,
+      return_encoder_tail_features=return_encoder_tail_features,
       adaptor_path=adaptor_path,
       annot_metric=annot_metric,
       **kwargs,

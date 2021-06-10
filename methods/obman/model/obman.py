@@ -21,6 +21,7 @@ class ObMan(nn.Module):
       adaptor_path=None,
       return_tail_features=False,
       return_encoder_features=False,
+      return_encoder_tail_features=False,
       annot_metric='m',
       scale_factor=0.0001,
       trans_factor=100.0,
@@ -44,6 +45,7 @@ class ObMan(nn.Module):
 
     self.return_tail_features = return_tail_features
     self.return_encoder_features = return_encoder_features
+    self.return_encoder_tail_features = return_encoder_tail_features
 
     self.annot_metric = annot_metric
     self.scale_factor = scale_factor
@@ -99,7 +101,6 @@ class ObMan(nn.Module):
     if shape is not None:
       output_batch[Fls.mano_shapes] = shape
 
-
     # hand scale trans
     if self.st_head is not None:
       scaletrans = self.st_head(features)
@@ -133,6 +134,11 @@ class ObMan(nn.Module):
         Fls.joints2d: joints2d,
         Fls.verts2d: verts2d,
         })
+
+    if shape is not None and self.st_head is not None:
+      output_batch[Fls.mano_params] = torch.cat(
+          [pose, shape, joints3d[:, self.center_idx]],
+          dim=-1)
 
     # obj scale trans
     if self.obj_st_head is not None:
@@ -170,6 +176,9 @@ class ObMan(nn.Module):
 
     if self.return_encoder_features:
       output_batch[Fls.encoder_features] = features
+
+    if self.return_encoder_tail_features:
+      output_batch[Fls.encoder_tail_features] = torch.cat([features, mano_features], dim=-1)
 
     return output_batch
 

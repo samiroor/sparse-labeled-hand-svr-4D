@@ -18,6 +18,7 @@ class Graph(nn.Module):
       adaptor_path=None,
       return_tail_features=False,
       return_encoder_features=False,
+      return_encoder_tail_features=False,
       center_idx=0,
       annot_metric='m',
       scale_factor=0.0001,
@@ -37,6 +38,7 @@ class Graph(nn.Module):
 
     self.return_tail_features = return_tail_features
     self.return_encoder_features = return_encoder_features
+    self.return_encoder_tail_features = return_encoder_tail_features
 
     self.center_idx = center_idx
     self.annot_metric = annot_metric #TODO reference mesh file should be in that
@@ -148,5 +150,8 @@ class Graph(nn.Module):
 
     if self.return_encoder_features:
       output_batch[Fls.encoder_features] = features
+
+    if self.return_encoder_tail_features:
+      output_batch[Fls.encoder_tail_features] = torch.cat([features, graph_features], dim=-1)
 
     return output_batch
