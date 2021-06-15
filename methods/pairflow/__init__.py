@@ -100,7 +100,12 @@ def get_model(
     'hidden_size':c_dim,
     'activation':'tanh',
     'n_blocks':3,
+    'cond_mode':'add',
     'use_positional_encoding':False,
+    'positional_encoding_kwargs':{
+      'linear':True,
+      'length':16,
+      }
     })
 
   flow = cfg.get('flow', 'resflow')

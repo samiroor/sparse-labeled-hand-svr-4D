@@ -26,7 +26,12 @@
         "hidden_size":512,
         "activation":"tanh",
         "n_blocks":3,
-        "use_positional_encoding":false
+        "cond_mode":"add",
+        "use_positional_encoding":false,
+        "positional_encoding_kwargs":{
+          "linear":true,
+          "length":16
+        }
       },
       "flow":"resflow",
       "flow_kwargs":{

@@ -13,8 +13,9 @@ class VelocityField(nn.Module):
       hidden_size=512,
       activation='tanh',
       n_blocks=5,
-      use_positional_encoding=False,
       cond_mode='add',
+      use_positional_encoding=False,
+      positional_encoding_kwargs={},
       ):
     """
     Args:
@@ -24,7 +25,7 @@ class VelocityField(nn.Module):
     assert(cond_mode in ['add','cat'])
     self.cond_mode = cond_mode
 
-    self.positional_encoder = PositionalEncoding() if use_positional_encoding else None
+    self.positional_encoder = PositionalEncoding(**positional_encoding_kwargs) if use_positional_encoding else None
     in_dim = in_dim if self.positional_encoder is None else self.positional_encoder.get_dim(in_dim)
     out_dim = out_dim
 
