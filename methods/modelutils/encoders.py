@@ -1,6 +1,5 @@
 import torch.nn as nn
-# import torch.nn.functional as F
-from torchvision import models
+from . import resnet
 
 
 class Resnet18(nn.Module):
@@ -11,10 +10,17 @@ class Resnet18(nn.Module):
         use_linear (bool): whether a final linear layer should be used
     '''
 
-    def __init__(self, c_dim, use_linear=True):
+    def __init__(
+        self,
+        c_dim,
+        use_linear=True,
+        return_layers=list(),
+        ):
         super().__init__()
         self.use_linear = use_linear
-        self.features = models.resnet18(pretrained=True)
+        self.return_layers = return_layers
+
+        self.features = resnet.resnet18(pretrained=True)
         self.features.fc = nn.Sequential()
         if use_linear:
             self.fc = nn.Linear(512, c_dim)
@@ -24,8 +30,10 @@ class Resnet18(nn.Module):
             raise ValueError('c_dim must be 512 if use_linear is False')
 
     def forward(self, x):
-        net = self.features(x)
-        out = self.fc(net)
+        features = self.features(x, self.return_layers)
+        out = self.fc(features['avgpool'])
+        if len(self.return_layers) > 0:
+          return out, features
         return out
 
 
