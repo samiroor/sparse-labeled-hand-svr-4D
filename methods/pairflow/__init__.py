@@ -109,7 +109,12 @@ def get_model(
     })
 
   flow = cfg.get('flow', 'resflow')
-  flow_kwargs = cfg.get('flow_kwargs', {'T':3, 'displacement':0.3})
+  flow_kwargs = cfg.get('flow_kwargs', {
+    'T':3,
+    'displacement':0.3,
+    'weighted_avg':False,
+    'gamma':0.4,
+    })
 
   # components
   mesh_predictor = mesh_predictor_dict[mesh_predictor](

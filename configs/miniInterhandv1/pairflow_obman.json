@@ -36,7 +36,9 @@
       "flow":"resflow",
       "flow_kwargs":{
         "T":3,
-        "displacement":0.3
+        "displacement":0.3,
+        "weighted_avg":false,
+        "gamma":0.4
       },
       "mesh_predictor":"obman",
       "mesh_predictor_kwargs":{

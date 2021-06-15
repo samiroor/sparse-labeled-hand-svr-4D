@@ -3,11 +3,21 @@ import torch.nn as nn
 
 
 class ResFlow(nn.Module):
-  def __init__(self, velocity_field, T, displacement=0.3):
+  def __init__(
+      self,
+      velocity_field,
+      T,
+      displacement=0.3,
+      weighted_avg=False,
+      gamma=0.4,
+      ):
     super().__init__()
     self.velocity_field = velocity_field
+
     self.T = T
     self.displacement = displacement
+    self.weighted_avg = weighted_avg
+    self.gamma = gamma
 
   def forward(self, x, cond):
     """x: [B,V,3]
@@ -19,12 +29,21 @@ class ResFlow(nn.Module):
     x = x - displacement #x.new_tensor([[self.displacement,0,0]])
     y_hat = self.forward_order4(x, cond)
     # TODO need intermediate?
+    if self.weighted_avg:
+      w = nn.functional.softmax(
+          x.new_tensor([self.gamma ** (self.T - i) for i in range(self.T + 1)]),
+          dim=-1,
+          )
+      return (w[:,None,None,None] @ y_hat).sum(dim=0)
+
     return y_hat[-1]
+
 
   def inverse(self, x):
     y_hat_inv = self.inverse_order4(x, cond)
     # TODO need intermediate
     return y_hat_inv[-1]
+
 
   def forward_order1(self, x, cond):
     # Defines the forward pass of the network.
