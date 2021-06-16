@@ -416,7 +416,6 @@ class PairFlowTrainer(BaseTrainer):
                   dim=-1
                   )
 
-              from IPython import embed;embed()
               loss_val = torch.stack(
                   [
                     fn(
