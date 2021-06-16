@@ -364,6 +364,7 @@ class PairFlowTrainer(BaseTrainer):
         batch_samples,
         output_batch,
         loss_cfg,
+        gamma_t=0.4,
         ):
         ''' Computes the loss.
 
@@ -399,10 +400,32 @@ class PairFlowTrainer(BaseTrainer):
             lamda = lamda_fn[0]
             fn = fns_dict[lamda_fn[1]]
 
-            loss_val = fn(
+            if batch_samples[k].shape == output_batch[k].shape:
+              loss_val = fn(
                 batch_samples[k],
                 output_batch[k],
                 )
+
+            else:
+              # multiTime output
+              T = output_batch[k].shape[0]
+              ws = torch.nn.functional.softmax(
+                  output_batch[k].new_tensor(
+                    [gamma_t ** (T-i) for i in range(T)]
+                    ),
+                  dim=-1
+                  )
+
+              from IPython import embed;embed()
+              loss_val = torch.stack(
+                  [
+                    fn(
+                      batch_samples[k],
+                      prd,
+                      ) * w for prd,w in zip(output_batch[k], ws)
+                    ],
+                  dim=0,
+                  ).sum(0)
 
             loss +=  lamda * loss_val
             loss_dict[k] = loss_val.item()

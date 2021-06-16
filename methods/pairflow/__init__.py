@@ -112,7 +112,8 @@ def get_model(
   flow_kwargs = cfg.get('flow_kwargs', {
     'T':3,
     'displacement':0.3,
-    'weighted_avg':False,
+    'return_multiTime':False,
+    'return_weighted_avg':False,
     'gamma':0.4,
     })
 

@@ -52,6 +52,15 @@ class BaseTrainer(object):
                     shape_ = v.shape
                     _dict[k] = v.reshape(-1,*shape_[2:])
 
+        # pred_dict might be multi-iteration (multiTime) and gt_dict not
+        # in this case we just calculate metrics of the last iteration outputs.
+        for k,v in pred_dict.items():
+            if k in gt_dict:
+                if v.shape[0] != gt_dict[k].shape[0]:
+                    pred_dict[k] = pred_dict[k][-1]
+                else:
+                    break
+
         for metric_fn in self.metrics_fns:
             metrics_dict.update(
                 metric_fn(
@@ -117,6 +126,14 @@ class BaseTrainer(object):
                     shape_ = v.shape
                     _dict[k] = v.reshape(-1,*shape_[2:])
 
+        # pred_dict might be multi-iteration (multiTime) and gt_dict not
+        # in this case we just visualize the last iteration outputs.
+        for k,v in pred_dict.items():
+            if k in gt_dict:
+                if v.shape[0] != gt_dict[k].shape[0]:
+                    pred_dict[k] = pred_dict[k][-1]
+                else:
+                    break
 
         if Fls.images in gt_dict: gt_dict[Fls.images]= denormalize(gt_dict[Fls.images].clone()) #B,c,H,W
 

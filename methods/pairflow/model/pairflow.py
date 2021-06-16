@@ -156,6 +156,11 @@ class PairFlow(nn.Module):
     points = input_batch[self.morph_key]
     morphed_points = self.flow(points, context)
 
+    if self.flow.return_multiTime:
+      T, B = morphed_points.shape[:2]
+      morphed_points = morphed_points.contiguous().view(T*B, *morphed_points.shape[2:])
+
+
     if self.morph_key == Fls.verts3d:
       verts3d = morphed_points
 
@@ -170,12 +175,20 @@ class PairFlow(nn.Module):
     else:
       raise NotImplementedError()
 
-    return {
-        Fls.verts3d: verts3d,
-        Fls.verts3d_rel: verts3d_rel,
-        Fls.joints3d: joints3d,
-        Fls.joints3d_rel: joints3d_rel,
-        }
+    if self.flow.return_multiTime:
+      return {
+          Fls.verts3d: verts3d.contiguous().view(T, B, *verts3d.shape[1:]),
+          Fls.verts3d_rel: verts3d_rel.contiguous().view(T, B, *verts3d_rel.shape[1:]),
+          Fls.joints3d: joints3d.contiguous().view(T, B, *joints3d.shape[1:]),
+          Fls.joints3d_rel: joints3d_rel.contiguous().view(T, B, *joints3d_rel.shape[1:]),
+          }
+    else:
+      return {
+          Fls.verts3d: verts3d,
+          Fls.verts3d_rel: verts3d_rel,
+          Fls.joints3d: joints3d,
+          Fls.joints3d_rel: joints3d_rel,
+          }
 
 
   def morph_mano_params(self, input_batch, context):
@@ -186,10 +199,16 @@ class PairFlow(nn.Module):
 
       points = torch.cat([pose, root], dim=-1).unsqueeze(1)
       morphed_points = self.flow(points, context)
+      morphed_shape = shape
+
+      if self.flow.return_multiTime:
+        T, B = morphed_points.shape[:2]
+        shape = shape[None].repeat(T, 1, 1)
+        morphed_points = morphed_points.contiguous().view(T*B, *morphed_points.shape[2:])
+        morphed_shape = shape.contiguous().view(T*B, *shape.shape[2:])
 
       morphed_root = morphed_points[:,:, -3:].squeeze()
       morphed_pose = morphed_points[:, :, :-3].squeeze()
-      morphed_shape = shape
 
       verts3d_rel, joints3d_rel = self.mesh_predictor.manolayer(
           th_pose_coeffs=morphed_pose,
@@ -203,16 +222,24 @@ class PairFlow(nn.Module):
 
       joints3d = joints3d_rel + morphed_root.unsqueeze(1)
       verts3d = verts3d_rel + morphed_root.unsqueeze(1)
+      mano_params = torch.cat([morphed_pose, morphed_shape, morphed_root], dim=-1)
 
     else:
       raise NotImplementedError()
 
-    return {
-        Fls.verts3d: verts3d,
-        Fls.verts3d_rel: verts3d_rel,
-        Fls.joints3d: joints3d,
-        Fls.joints3d_rel: joints3d_rel,
-        Fls.mano_poses: morphed_pose,
-        Fls.mano_shapes: morphed_shape,
-        Fls.mano_params: torch.cat([morphed_pose, morphed_shape, morphed_root], dim=-1)
-        }
+    if self.flow.return_multiTime:
+      return {
+          Fls.verts3d: verts3d.contiguous().view(T, B, *verts3d.shape[1:]),
+          Fls.verts3d_rel: verts3d_rel.contiguous().view(T, B, *verts3d_rel.shape[1:]),
+          Fls.joints3d: joints3d.contiguous().view(T, B, *joints3d.shape[1:]),
+          Fls.joints3d_rel: joints3d_rel.contiguous().view(T, B, *joints3d_rel.shape[1:]),
+          Fls.mano_params: mano_params.contiguous().view(T, B, *mano_params.shape[1:])
+          }
+    else:
+      return {
+          Fls.verts3d: verts3d,
+          Fls.verts3d_rel: verts3d_rel,
+          Fls.joints3d: joints3d,
+          Fls.joints3d_rel: joints3d_rel,
+          Fls.mano_params: mano_params,
+          }

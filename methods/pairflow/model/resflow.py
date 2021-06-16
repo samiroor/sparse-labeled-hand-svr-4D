@@ -8,7 +8,8 @@ class ResFlow(nn.Module):
       velocity_field,
       T,
       displacement=0.3,
-      weighted_avg=False,
+      return_multiTime=False,
+      return_weighted_avg=False,
       gamma=0.4,
       ):
     super().__init__()
@@ -16,8 +17,11 @@ class ResFlow(nn.Module):
 
     self.T = T
     self.displacement = displacement
-    self.weighted_avg = weighted_avg
+
+    self.return_multiTime = return_multiTime
+    self.return_weighted_avg = return_weighted_avg
     self.gamma = gamma
+
 
   def forward(self, x, cond):
     """x: [B,V,3]
@@ -28,13 +32,16 @@ class ResFlow(nn.Module):
     displacement[:,:,-1] = self.displacement
     x = x - displacement #x.new_tensor([[self.displacement,0,0]])
     y_hat = self.forward_order4(x, cond)
-    # TODO need intermediate?
-    if self.weighted_avg:
+
+    if self.return_weighted_avg:
       w = nn.functional.softmax(
           x.new_tensor([self.gamma ** (self.T - i) for i in range(self.T + 1)]),
           dim=-1,
           )
       return (w[:,None,None,None] @ y_hat).sum(dim=0)
+
+    if self.return_multiTime:
+      return y_hat
 
     return y_hat[-1]
 
