@@ -123,7 +123,7 @@ def skeleton3D(
 
   for link, c in zip(links, links_colors):
     if (visibility[link[0]] == False) or (visibility[link[1]] == False):
-                continue
+      continue
     coord1 = coords3D[link[0], :]
     coord2 = coords3D[link[1], :]
     pts = np.stack([coord1, coord2])
@@ -184,25 +184,27 @@ def mesh(
 def cam_3d(
     axis,
     verts,
-    flip_x=False):
-    """
+    flip_x=False,
+    ):
+
+  """
     Centers view on cuboid containing hand and flips y and z axis
     and fixes azimuth
-    """
-    extents = np.stack([verts.min(0), verts.max(0)], axis=1)
-    sz = extents[:, 1] - extents[:, 0]
-    centers = np.mean(extents, axis=1)
-    maxsize = max(abs(sz))
+  """
+  extents = np.stack([verts.min(0), verts.max(0)], axis=1)
+  sz = extents[:, 1] - extents[:, 0]
+  centers = np.mean(extents, axis=1)
+  maxsize = max(abs(sz))
 
-    r = maxsize / 2
-    if flip_x:
-        axis.set_xlim(centers[0] + r, centers[0] - r)
-    else:
-        axis.set_xlim(centers[0] - r, centers[0] + r)
+  r = maxsize / 2
+  if flip_x:
+    axis.set_xlim(centers[0] + r, centers[0] - r)
+  else:
+    axis.set_xlim(centers[0] - r, centers[0] + r)
 
-    # Invert y and z axis
-    axis.set_ylim(centers[1] + r, centers[1] - r)
-    axis.set_zlim(centers[2] + r, centers[2] - r)
+  # Invert y and z axis
+  axis.set_ylim(centers[1] + r, centers[1] - r)
+  axis.set_zlim(centers[2] + r, centers[2] - r)
 
 
 # fast renderer in cuda (torch)
@@ -307,15 +309,15 @@ def save_images(
     fig.savefig(
         os.path.join(save_dir,f'{i}.png')
         )
-    plt.close()
+    plt.close(fig)
 
 
 # make video
 def create_video(video_file, img_folder='tmp', suffix='%d.png'):
-    print(f'Creating \n {video_file}')
-    visutils.images_to_video(img_folder=img_folder, video_file=video_file, suffix=suffix)
-    shutil.rmtree(img_folder)
-    print('-  END')
+  print(f'Creating \n {video_file}')
+  visutils.images_to_video(img_folder=img_folder, video_file=video_file, suffix=suffix)
+  shutil.rmtree(img_folder)
+  print('-  END')
 
 
 # cmap bar to show errors
@@ -345,6 +347,7 @@ def err_cmap_colors(verts_prd, verts_gt, max_val=0.05):
 
 # save ply meshes
 def save_mesh_ply(verts, faces, name):
+  #TODO memory leak
   mesh = trimesh.Trimesh(
       vertices=verts,
       faces=faces,
