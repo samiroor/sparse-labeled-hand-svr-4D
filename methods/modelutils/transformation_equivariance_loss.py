@@ -26,6 +26,10 @@ class TfEq(nn.Module):
       max_angle=1.57,
       scale_jitter=0.01,
       center_jitter=0.1,
+      brightness=0.5,
+      contrast=0.5,
+      saturation=0.5,
+      hue=0.5,
       transform_type='rotation',
       device='cpu',
       ):
@@ -37,8 +41,15 @@ class TfEq(nn.Module):
     self.max_angle = max_angle
     self.scale_jitter = scale_jitter
     self.center_jitter = center_jitter
+
+    self.brightness = brightness
+    self.contrast = contrast
+    self.saturation = saturation
+    self.hue = hue
+
     self.transform_type = transform_type
     self.device = device
+
 
   def set_transform_mats(
       self,
@@ -93,13 +104,21 @@ class TfEq(nn.Module):
     """
       would augment all items availbale in input_batch via applyinig transformation matrices!
     """
-    output_batch = input_batch.copy()
+    output_batch = {}
+    if Fls.mano_shapes in input_batch:
+      output_batch[Fls.mano_shapes] = input_batch[Fls.mano_shapes]
 
     if Fls.images in input_batch:
       output_batch[Fls.images] = transform_img(
           input_batch[Fls.images],
           self.affinetrans,
           self.input_hw,
+          color={
+            'saturation':self.saturation,
+            'brightness':self.brightness,
+            'contrast':self.contrast,
+            'hue':self.hue,
+            }
           )
 
     if Fls.joints2d in input_batch:
@@ -108,7 +127,7 @@ class TfEq(nn.Module):
           self.affinetrans,
           )
 
-    for _ in [
+    for k in [
         Fls.joints3d,
         Fls.joints3d_rel,
         Fls.joints3d_nrm,
@@ -116,32 +135,38 @@ class TfEq(nn.Module):
         Fls.verts3d_rel,
         Fls.verts3d_nrm,
         ]:
-      if _ in input_batch:
-        output_batch[_] = (self.rot_mat @ input_batch[_].transpose(2, 1)).transpose(2, 1)
+      if k in input_batch:
+        output_batch[k] = (self.rot_mat @ input_batch[k].transpose(2, 1)).transpose(2, 1)
 
     if Fls.camsintr in input_batch:
       camintr = self.rot_mat @ input_batch[Fls.camsintr] @ self.rot_mat.transpose(2, 1)
       output_batch[Fls.camsintr] = self.post_rot_trans @ camintr
 
-    for _ in [
+    for k in [
         Fls.mano_poses,
         Fls.mano_poses_quat,
         Fls.mano_params,
         ]:
-      if _ in input_batch:
-        if _ == Fls.mano_poses_quat:
-          vp = input_batch[_][:, :4]
+      if k in input_batch:
+        if k == Fls.mano_poses_quat:
+          vp = input_batch[k][:, :4]
           vp_tf = kgc.rotation_matrix_to_quaternion(
               self.rot_mat @ kgc.quaternion_to_rotation_matrix(vp)
               )
-          output_batch[_][:, :4] = vp_tf
+          output_batch[k] = torch.cat(
+              [vp_tf, input_batch[k][:, 4:]],
+              dim=-1,
+              )
 
         else:
-          vp = input_batch[_][:, :3]
+          vp = input_batch[k][:, :3]
           vp_tf = kgc.rotation_matrix_to_angle_axis(
               self.rot_mat @ kgc.angle_axis_to_rotation_matrix(vp)
               )
-          output_batch[_][:, :3] = vp_tf
+          output_batch[k] = torch.cat(
+              [vp_tf, input_batch[k][:, 3:]],
+              dim=-1,
+              )
 
     return output_batch
 
@@ -254,14 +279,43 @@ def transform_coords(pts, affine_trans, invert=False):
 
 
 
-def transform_img(img, affine_trans, res):
+def transform_img(img, affine_trans, res, color={}):
   """
     img [b, c, h, w]
   """
+  batch_size = img.shape[0]
+  img = img.clone()
+
   with torch.no_grad():
+    if bool(color):
+
+      brightness = Uniform(
+          max(0, 1 - color['brightness']), 1 + color['brightness'],
+          ).sample((batch_size, )).to(img.device)
+
+      contrast = Uniform(
+          max(0, 1 - color['contrast']), 1 + color['contrast'],
+          ).sample((batch_size, )).to(img.device)
+
+      saturation = Uniform(
+          max(0, 1 - color['saturation']), 1 + color['saturation'],
+          ).sample((batch_size, )).to(img.device)
+
+      hue = Uniform(-color['hue'], color['hue']).sample((batch_size, )).to(img.device)
+
+      aug = kornia.augmentation.ColorJitter(
+          brightness=color['augmentation'],
+          contrast=color['contrast'],
+          saturation=color['saturation'],
+          hue=color['hue'],
+          )
+
+      img = aug(img)
+
     img_tf = kornia.warp_affine(
-      img,
-      affine_trans[:, :2, :],
-      dsize=res,
-      )
+        img,
+        affine_trans[:, :2, :],
+        dsize=res,
+        )
+
   return img_tf
