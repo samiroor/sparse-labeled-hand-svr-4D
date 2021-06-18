@@ -16,12 +16,20 @@
       "trans_factor":100,
       "off_z":1.0,
       "return_tail_features":false,
+      "return_encoder_tail_features":false,
       "return_encoder_features":false,
+      "return_encoder_spatial_features":false,
       "adaptor_path":null,
       "ref_side":"right",
       "center_idx":0,
       "annot_metric":"m",
       "encoder":"resnet18",
+      "encoder_kwargs":{
+        "c_dim":512, #reduced feat out_dim
+        "use_linear":true, #put an extra fc
+        "return_spatial_features":false,
+        "return_layers":["layer4"]
+      },
       "graph_base":"fcs",
       "graph_base_kwargs":{
         "ch_in":512, #c_dim,
@@ -40,7 +48,15 @@
       "reference_mesh_file":"misc/graph/template_right_meter.obj",
       "downsample_file":"misc/graph/downsample_{}.pkl",
       "loss":{
-        "verts3d":[0.5,"l2"]
+        #"loss_types":["mesh_predictor_s", "mesh_predictor_tfeq_u"],
+        #"mesh_predictor":{
+          #"joints3d":[0.5,"l2"],
+          #"verts3d":[0.5,"l2"]
+        },
+        #"mesh_predictor_tfeq":{
+          #"joints3d":[0.5,"l2"],
+          #"verts3d":[0.5,"l2"]
+        }
       }
     }
   }
