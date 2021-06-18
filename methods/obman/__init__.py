@@ -35,14 +35,12 @@ def get_model(
 
 
   # shortcuts
-  c_dim = cfg.get('c_dim', 512) # encoder output dim
-  h_dim = cfg.get('h_dim', 512) # pose & shape head input dim
-
   return_tail_features = cfg.get('return_tail_features', False)
   return_encoder_features = cfg.get('return_encoder_features', False)
+  return_encoder_spatial_features = cfg.get('return_encoder_spatial_features', False)
   return_encoder_tail_features = cfg.get('return_encoder_tail_features', False)
-  adaptor_path = cfg.get('adaptor_path', None)
 
+  adaptor_path = cfg.get('adaptor_path', None)
   annot_metric = cfg.get('annot_metric', 'm')
 
   # projection setup
@@ -63,7 +61,15 @@ def get_model(
 
   # arch
   encoder = cfg.get('encoder', 'resnet18')
-  encoder_kwargs = cfg.get('encoder_kwargs', {})
+  encoder_kwargs = cfg.get('encoder_kwargs', {
+    'c_dim':512,
+    'use_linear':True,
+    'return_spatial_features':False,
+    })
+
+  c_dim = encoder_kwargs['c_dim'] # encoder output dim
+  h_dim = cfg.get('h_dim', 512)       # pose & shape head input dim
+
 
   mano_base = cfg.get('mano_base', 'fcs')
   mano_base_kwargs = cfg.get('mano_base_kwargs', {
@@ -107,7 +113,6 @@ def get_model(
       )
 
   encoder = encoder_dict[encoder](
-      c_dim=c_dim,
       **encoder_kwargs).to(device) if encoder in encoder_dict else None
 
   mano_base = mano_base_dict[mano_base](
@@ -141,6 +146,7 @@ def get_model(
       off_z=off_z,
       return_tail_features=return_tail_features,
       return_encoder_features=return_encoder_features,
+      return_encoder_spatial_features=return_encoder_spatial_features,
       return_encoder_tail_features=return_encoder_tail_features,
       adaptor_path=adaptor_path,
       annot_metric=annot_metric,

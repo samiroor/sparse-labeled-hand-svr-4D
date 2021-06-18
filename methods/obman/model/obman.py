@@ -21,6 +21,7 @@ class ObMan(nn.Module):
       adaptor_path=None,
       return_tail_features=False,
       return_encoder_features=False,
+      return_encoder_spatial_features=False,
       return_encoder_tail_features=False,
       annot_metric='m',
       scale_factor=0.0001,
@@ -45,6 +46,7 @@ class ObMan(nn.Module):
 
     self.return_tail_features = return_tail_features
     self.return_encoder_features = return_encoder_features
+    self.return_encoder_spatial_features = return_encoder_spatial_features
     self.return_encoder_tail_features = return_encoder_tail_features
 
     self.annot_metric = annot_metric
@@ -62,7 +64,12 @@ class ObMan(nn.Module):
     assert all(_ in input_batch for _ in (Fls.images, Fls.camsintr, ))
 
     # feature
-    features = self.encoder(input_batch[Fls.images])
+    if self.encoder.return_spatial_features:
+      features, spatial_features = self.encoder(input_batch[Fls.images])
+    else:
+      features = self.encoder(input_batch[Fls.images])
+      spatial_features = None
+
     H, W = tuple(input_batch[Fls.images].shape[2:])
     camsintr = input_batch[Fls.camsintr]
 
@@ -176,6 +183,10 @@ class ObMan(nn.Module):
 
     if self.return_encoder_features:
       output_batch[Fls.encoder_features] = features
+
+    if self.return_encoder_spatial_features:
+      assert spatial_features is not None
+      output_batch[Fls.encoder_spatial_features] = spatial_features
 
     if self.return_encoder_tail_features:
       output_batch[Fls.encoder_tail_features] = torch.cat([features, mano_features], dim=-1)
