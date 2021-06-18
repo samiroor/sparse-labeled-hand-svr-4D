@@ -33,12 +33,17 @@ def get_config(path, default_path=None):
     cfg = EasyDict()
 
   # include main configuration
+  # we do not want to inherit dataloaders (to avoid mistakes!)
+  if 'dataloader' in cfg.get('training', {}): cfg['training'].pop('dataloader')
+  if 'dataloader' in cfg.get('evaluating', {}): cfg['evaluating'].pop('dataloader')
+  if 'dataloader' in cfg.get('testing', {}): cfg['testing'].pop('dataloader')
+
   update_recursive(cfg, cfg_special)
   return cfg
 
 
 def update_recursive(dict1, dict2):
-  ''' Update two config dictionaries recursively.
+  ''' Update two config dictionaries recursively (except dataloaders).
   Args:
     dict1 (dict): first dictionary to be updated
     dict2 (dict): second dictionary which entries should be used
