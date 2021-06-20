@@ -3,8 +3,8 @@
   "metrics":{
     "names":["hand3d"],
     "ops":{
-      #"mesh_predictor_s_xyz_mean3d":"min",
-      #"mesh_predictor_u_xyz_mean3d":"min",
+      #"mesh_predictor_s__xyz_mean3d":"min",
+      #"mesh_predictor_u__xyz_mean3d":"min",
       "loss":"min"
     }
   },
@@ -46,21 +46,24 @@
       "st_head":"fcs",
       "obj_st_head":null,
       "loss":{
-        #"loss_types":["mesh_predictor_s", "mesh_predictor_tfeq_u"],
-        #"mesh_predictor":{
-          #"joints3d":[0.5,"l2"],
-          #"verts3d":[0.5,"l2"],
-          #"mano_shapes":[5e-7,"penalty"],
-          #"mano_poses":[5e-6,"penalty"]
+        #"loss_types":["mesh_predictor_s", "mesh_predictor_u"],
+        #"mesh_predictor_s":{
+          #"ordinary":{
+            #"joints3d":[0.5,"l2"],
+            #"verts3d":[0.5,"l2"],
+            #"mano_shapes":[5e-7,"penalty"],
+            #"mano_poses":[5e-6,"penalty"]
+            #}
         #},
-        #"mesh_predictor_tfeq":{
-          #"joints3d":[0.5,"l2"],
-          #"verts3d":[0.5,"l2"],
-          #"mano_shapes":[5e-7,"penalty"],
-          #"mano_poses":[5e-6,"penalty"]
+        #"mesh_predictor_u":{
+          #"tfeq":{
+            #"joints3d":[0.5,"l2"],
+            #"verts3d":[0.5,"l2"],
+            #"mano_shapes":[5e-7,"penalty"],
+            #"mano_poses":[5e-6,"penalty"]
+            #}
         #}
       }
     }
   }
 }
-
