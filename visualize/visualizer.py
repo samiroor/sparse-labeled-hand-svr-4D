@@ -236,6 +236,9 @@ def render(
   render_gt = None; render_prd = None; render_rotated_prd = None
   render_list = list()
 
+  if images is not None:
+    render_list.append(images.permute(0, 2, 3, 1))
+
   # gt
   if verts_gt is not None:
     render_gt = fastrender.render(
@@ -281,7 +284,7 @@ def render(
 # save images (numpy)
 def save_images(
     images,
-    figaspect=0.2,
+    figaspect=0.16,
     fontsize=8,
     get_cmap=True,
     title=None,
