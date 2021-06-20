@@ -90,7 +90,7 @@ class PairFlowTrainer(BaseTrainer):
           'unsupervised':unsupervised_batch,
           },
         fwd=True,
-        invert=bool(self.loss_cfg.flow_bkw) or bool(self.loss_cfg.flow_bkw_tfeq),
+        invert=bool(self.loss_cfg.flow_u),
       )
 
     loss, loss_dict = self.compute_loss(
@@ -216,10 +216,8 @@ class PairFlowTrainer(BaseTrainer):
             *loss_types (list of str): [
               'mesh_predictor_s',
               'mesh_predictor_u', #infer_step
-              'mesh_predictor_tfeq_u',
               'flow_s',
-              'flow_bkw_u',
-              'flow_bkw_tfeq_u',
+              'flow_u',
               'flow_infer_u', #infer_step
               ]
               **'s' means loss on supervised images
@@ -230,141 +228,125 @@ class PairFlowTrainer(BaseTrainer):
 
     loss_list = list()
 
-    ### on mesh predictor ###
+    # mesh predictor loss on Supervised items
     if 'mesh_predictor_s' in loss_types:
-      assert bool(self.loss_cfg.mesh_predictor), 'Expected mesh_predictor loss config'
-      loss_list.append(
-          [
-            'mesh_predictor_s_',
-            supervised_batch,
-            output_batch['mesh_predictor']['supervised'],
-            self.loss_cfg.mesh_predictor,
-            ]
-          )
-
-    if 'mesh_predictor_u' in loss_types:
-      assert bool(self.loss_cfg.mesh_predictor), 'Expected mesh_predictor loss config'
-      assert step_mode=='infer','Expected inference step to use unsupervised batch'
-      loss_list.append(
-          [
-            'mesh_predictor_u_',
-            unsupervised_batch,
-            output_batch['mesh_predictor']['unsupervised'],
-            self.loss_cfg.mesh_predictor,
-            ]
-          )
-
-    ### transform equivariance ###
-    if 'mesh_predictor_tfeq_u' in loss_types or 'flow_bkw_tfeq_u' in loss_types:
-      batch_size, _, h, w = supervised_batch[Fls.images].shape
-
-      TFEQ = LOSS.TfEq(
-          batch_size=batch_size,
-          input_hw=(h,w),
-          device=self.device,
-          )
-
-      TFEQ.set_transform_mats()
-
-      supervised_batch_tx = TFEQ.transform(supervised_batch)
-      unsupervised_batch_tx = TFEQ.transform(unsupervised_batch)
-
-      ftx_output = self.model({
-        'supervised':supervised_batch_tx,
-        'unsupervised':unsupervised_batch_tx,
-        },
-        fwd=False,
-        invert='flow_bkw_tfeq_u' in loss_types,
-        )
-
-      if 'mesh_predictor_tfeq_u' in loss_types:
-        assert bool(self.loss_cfg.mesh_predictor_tfeq),'Expected mesh_predictor_tfeq loss config'
-        ftx = ftx_output['mesh_predictor']['unsupervised']
-        tfx = TFEQ.transform(output_batch['mesh_predictor']['unsupervised'])
-
+      assert self.loss_cfg.get('mesh_predictor_s', False), 'Expected mesh_predictor_s loss config'
+      if 'ordinary' in self.loss_cfg.mesh_predictor_s:
         loss_list.append(
             [
-              'mesh_predictor_tfeq_u_',
-              ftx,
-              tfx,
-              self.loss_cfg.mesh_predictor_tfeq,
+              'mesh_predictor_s',
+              'ordinary',
+              supervised_batch,
+              output_batch['mesh_predictor']['supervised'],
+              self.loss_cfg.mesh_predictor_s.ordinary,
               ]
             )
 
-      if 'flow_bkw_tfeq_u' in loss_types:
-        assert bool(self.loss_cfg.flow_bkw_tfeq),'Expected flow_tfeq loss config'
-        ftx = ftx_output['flow']['unsupervised']
-        tfx = TFEQ.transform(output_batch['flow']['unsupervised'])
+    # mesh predictor loss on Unsupervised items
+    if 'mesh_predictor_u' in loss_types or 'flow_u' in loss_types:
+      assert self.loss_cfg.get('mesh_predictor_u', False) or self.loss_cfg.get('flow_u', False), 'Expected mesh_predictor_u or flow_u loss config'
 
-        loss_list.append(
-            [
-              'flow_bkw_tfeq_u_',
-              ftx,
-              tfx,
-              self.loss_cfg.flow_bkw_tfeq,
-              ]
+      if 'tfeq' in self.loss_cfg.get('mesh_predictor_u', {}) or 'tfeq' in self.loss_cfg.get('flow_u', {}):
+        x_s = supervised_batch[Fls.images]
+        x_u = unsupervised_batch[Fls.images]
+
+        batch_size, _, h, w = x_s[Fls.images].shape
+        TFEQ = LOSS.TfEq(
+            batch_size=batch_size,
+            input_hw=(h,w),
+            device=self.device,
             )
 
-      if False:#True:#DEBUG:
-        debug_dir='debug-tfeq'
-        os.makedirs(debug_dir, exist_ok=True)
-        # rendering & saving plys
-        self._visualize_step(
-            supervised_batch_tx,
-            supervised_batch_tx,
-            return_render_images=False,
-            display_render=True,
-            display_skeleton=True,
-            save_ply=False,
-            suffix='debug_tfeq',
-            vis_dir=debug_dir,
-            )
+        TFEQ.set_transform_mats()
 
+        # ftx_s & ftx_u
+        tx_s = TFEQ.transform(x_s)
+        tx_u = TFEQ.transform(x_u)
 
-    ### flow ###
+        ftx_output = self.model({
+          'supervised': tx_s,
+          'unsupervised':tx_u,
+          },
+          fwd=False,
+          invert='tfeq' in self.loss_cfg.get('flow_u', {}),
+          )
+
+        if 'tfeq' in self.loss_cfg.get('mesh_predictor_u', {}):
+          ftx_u = ftx_output['mesh_predictor']['unsupervised']
+          tfx_u = TFEQ.transform(output_batch['mesh_predictor']['unsupervised'])
+          loss_list.append(
+              [
+                'mesh_predictor_u',
+                'tfeq',
+                tfx_u,
+                ftx_u,
+                self.loss_cfg.mesh_predictor_u.tfeq,
+                ]
+              )
+
+        if 'tfeq' in self.loss_cfg.get('flow_u', {}):
+          ftx_u = ftx_output['flow']['unsupervised']
+          tfx_u = TFEQ.transform(output_batch['flow']['unsupervised'])
+          loss_list.append(
+              [
+                'flow_u',
+                'tfeq',
+                tfx_u,
+                ftx_u,
+                self.loss_cfg.flow_u.tfeq,
+                ]
+              )
+
+    ### flow loss on supervised items ###
     if 'flow_s' in loss_types:
-      assert bool(self.loss_cfg.flow),'Expected flow loss config'
-      loss_list.append(
-          [
-            'flow_s_',
-            supervised_batch,
-            output_batch['flow']['supervised'],
-            self.loss_cfg.flow,
+      assert self.loss_cfg.get('flow_s', False), 'Expected flow_s loss config'
+      if 'ordinary' in self.loss_cfg.flow_s:
+        loss_list.append(
+            [
+              'flow_s',
+              'ordinary',
+              supervised_batch,
+              output_batch['flow']['supervised'],
+              self.loss_cfg.flow_s.ordinary,
             ]
           )
 
-    if 'flow_bkw_u' in loss_types:
-      assert bool(self.loss_cfg.flow_bkw),'Expected flow_bkw loss config'
-      loss_list.append(
-          [
-            'flow_bkw_u_',
-            output_batch['mesh_predictor']['unsupervised'],
-            output_batch['flow']['unsupervised'],
-            self.loss_cfg.flow_bkw,
+
+    if 'flow_u' in loss_types:
+      assert self.loss_cfg.get('flow_u', False),'Expected flow_bkw loss config'
+      if 'bkw' in self.loss_cfg.flow_u:
+        loss_list.append(
+            [
+              'flow_u',
+              'bkw',
+              output_batch['mesh_predictor']['unsupervised'],
+              output_batch['flow']['unsupervised'],
+              self.loss_cfg.flow_u.bkw,
             ]
           )
 
-    if 'flow_infer_u'in loss_types:
-      assert bool(self.loss_cfg.flow),'Expected flow loss config'
-      assert step_mode=='infer','Expected inference step to use unsupervised batch'
+    if 'flow_s' in loss_types and step_mode=='infer':
+      assert self.loss_cfg.get('flow_s', False),'Expected flow loss config'
       loss_list.append(
           [
-            'flow_infer_u_',
+            'flow_u',
+            'infer_ordinary',
             unsupervised_batch,
             output_batch['flow']['infer_unsupervised'],
-            self.loss_cfg.flow,
+            self.loss_cfg.flow_s.ordinary,
             ]
           )
+
 
     ### compute loss ###
     loss = torch.tensor(0.).to(self.device)
     loss_dict = dict()
 
-    for prefix, gt, prd, cfg in loss_list:
+    for prefix, name, gt, prd, cfg in loss_list:
       _loss, _loss_dict = self._compute_loss(gt, prd, cfg)
       loss += _loss
       loss_dict.update(
-          {f'loss_{prefix}' + k:v for k, v in _loss_dict.items()}
+          {f'{prefix}__loss_{name}_' + k:v for k, v in _loss_dict.items()}
           )
 
     return loss, loss_dict
@@ -428,7 +410,7 @@ class PairFlowTrainer(BaseTrainer):
           prd
           )
       metric_dict.update(
-          {f'{prefix}' + k:v for k, v in _metric_dict.items()}
+          {f'{prefix}__' + k:v for k, v in _metric_dict.items()}
           )
 
     return metric_dict
@@ -462,7 +444,7 @@ class PairFlowTrainer(BaseTrainer):
           return_render_images=True,
           display_render=True,
           save_ply=True,
-          suffix='mesh_predictor_supervised_',
+          suffix='mesh_predictor_s_',
           vis_dir=vis_dir,
           )
 
@@ -472,7 +454,7 @@ class PairFlowTrainer(BaseTrainer):
         return_render_images=True,
         display_render=True,
         save_ply=True,
-        suffix='mesh_predictor_unsupervised_',
+        suffix='mesh_predictor_u_',
         vis_dir=vis_dir,
         )
 
@@ -486,7 +468,7 @@ class PairFlowTrainer(BaseTrainer):
           return_render_images=True,
           display_render=True,
           save_ply=True,
-          suffix='flow_infer_unsupervised_',
+          suffix='flow_infe_u_',
           vis_dir=vis_dir,
           )
 
@@ -500,7 +482,7 @@ class PairFlowTrainer(BaseTrainer):
           return_render_images=True,
           display_render=True,
           save_ply=True,
-          suffix='flow_supervised_',
+          suffix='flow_s_',
           vis_dir=vis_dir,
           )
 

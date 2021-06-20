@@ -12,6 +12,14 @@ from data import Fields as Fls
 from methods.modelutils import losses as LOSS
 
 
+DEBUG_TFEQ = False
+def is_valid(_dict):
+  for k,v in _dict.items():
+    if torch.any(torch.isnan(v)):
+      return False
+  return True
+
+
 class ObManTrainer(BaseTrainer):
   def __init__(
       self,
@@ -65,6 +73,7 @@ class ObManTrainer(BaseTrainer):
       utils.adjust_bn_params(self.model, 'encoder.')
 
     self.optimizer.zero_grad()
+
     output_batch = self.model(batch_samples)
 
     loss, loss_dict = self.compute_loss(
@@ -142,7 +151,7 @@ class ObManTrainer(BaseTrainer):
       output_batch,
       loss_types=[
         'mesh_predictor_s',
-        'mesh_predictor_tfeq_u'],
+        'mesh_predictor_u'],
       ):
 
     loss_list = list()
@@ -152,21 +161,25 @@ class ObManTrainer(BaseTrainer):
 
     # mesh predictor loss on Supervised items
     if 'mesh_predictor_s' in loss_types:
-      assert bool(self.loss_cfg.mesh_predictor), 'Expected mesh_predictor loss config'
-      if any(mask_s):
+      assert self.loss_cfg.get('mesh_predictor_s', False), 'Expected mesh_predictor_s loss config'
+
+      if torch.any(mask_s) and ('ordinary' in self.loss_cfg.mesh_predictor_s):
         loss_list.append(
             [
-              'mesh_predictor_s_',
+              'mesh_predictor_s',
+              'ordinary',
               select_fn(batch_samples, mask_s),
               select_fn(output_batch, mask_s),
-              self.loss_cfg.mesh_predictor,
+              self.loss_cfg.mesh_predictor_s.ordinary,
               ]
             )
 
-    # mesh predictor tfeq (transform equivariance) loss on Unsupervised items
-    if 'mesh_predictor_tfeq_u' in loss_types:
-      assert bool(self.loss_cfg.mesh_predictor_tfeq), 'Expected mesh_predictor_tfeq loss config'
-      if any(~mask_s):
+    # mesh predictor loss on Unsupervised items
+    if 'mesh_predictor_u' in loss_types:
+      assert self.loss_cfg.get('mesh_predictor_u', False), 'Expected mesh_predictor_u loss config'
+
+      if torch.any(~mask_s) and ('tfeq' in self.loss_cfg.mesh_predictor_u):
+
         x = select_fn(batch_samples, ~mask_s)
         fx = select_fn(output_batch, ~mask_s)
 
@@ -181,26 +194,49 @@ class ObManTrainer(BaseTrainer):
 
         # ftx
         tx = TFEQ.transform(x)
+        if not is_valid(tx):
+          print('***********tfeq tx');from IPython import embed;embed()
         ftx = self.model(tx)
-
+        if not is_valid(ftx):
+          print('***********tfeq ftx');from IPython import embed;embed()
         #tfx
         tfx = TFEQ.transform(fx)
 
         loss_list.append(
             [
-              'mesh_predictor_tfeq_u',
-              ftx,
+              'mesh_predictor_u',
+              'tfeq',
               tfx,
-              self.loss_cfg.mesh_predictor_tfeq,
+              ftx,
+              self.loss_cfg.mesh_predictor_u.tfeq,
               ]
             )
+
+        if DEBUG_TFEQ:
+          debug_dir='debug-tfeq-obman'
+          os.makedirs(debug_dir, exist_ok=True)
+          # rendering & saving plys
+          self._visualize_step(
+              tx,
+              tx,
+              return_render_images=False,
+              display_render=True,
+              display_skeleton=True,
+              save_ply=False,
+              suffix='debug_tfeq',
+              vis_dir=debug_dir,
+              )
+
+
 
     ### compute loss ###
 
     loss = torch.tensor(0.).to(self.device)
     loss_dict = dict()
 
-    for prefix, gt, prd, cfg in loss_list:
+    for prefix, name, gt, prd, cfg in loss_list:
+      if not is_valid(gt) or not is_valid(prd):
+        print('***********loss ');from IPython import embed;embed()
       _loss, _loss_dict = self._compute_loss(
           gt,
           prd,
@@ -208,7 +244,7 @@ class ObManTrainer(BaseTrainer):
           )
       loss += _loss
       loss_dict.update(
-          {f'loss_{prefix}' + k:v for k, v in _loss_dict.items()}
+          {f'{prefix}__loss_{name}_' + k:v for k, v in _loss_dict.items()}
           )
 
     return loss, loss_dict
@@ -225,7 +261,7 @@ class ObManTrainer(BaseTrainer):
 
     mask_s = batch_samples[Fls.supervised].bool()
 
-    if any(mask_s):
+    if torch.any(mask_s):
       metric_list.append(
           [
             'mesh_predictor_s',
@@ -233,7 +269,7 @@ class ObManTrainer(BaseTrainer):
             select_fn(output_batch, mask_s),
             ]
           )
-    if any(~mask_s):
+    if torch.any(~mask_s):
       metric_list.append(
           [
             'mesh_predictor_u',
@@ -251,7 +287,7 @@ class ObManTrainer(BaseTrainer):
           prd
           )
       metric_dict.update(
-          {f'{prefix}' + k:v for k, v in _metric_dict.items()}
+          {f'{prefix}__' + k:v for k, v in _metric_dict.items()}
           )
 
     return metric_dict
