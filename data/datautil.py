@@ -305,6 +305,24 @@ def denormalize(img_nm):
     return img
 
 
+def torch_normalize(img):
+    """
+    :param img: RGB image in float
+    :return: normalized image
+    """
+    img_nm = torch.zeros_like(img)
+    if img.max() > 1.:
+        img /= 255.
+
+    mean = [0.485, 0.456, 0.406]
+    std = [0.229, 0.224, 0.225]
+
+    for c, (m, s) in enumerate(zip(mean, std)):
+      img_nm[:, c, :, :] = (img[:, c, :, :] - m) / s
+
+    return img_nm
+
+
 def torch_denormalize(img_nm):
     """
     :param img_nm: normalized image in float

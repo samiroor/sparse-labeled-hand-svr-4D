@@ -6,14 +6,14 @@ import torch
 
 from . import collate
 from .standard_fields import Fields
-from .datautil import denormalize, quat2rotvec, rotvec2quat, torch_denormalize
+from .datautil import denormalize, quat2rotvec, rotvec2quat, torch_denormalize, torch_normalize
 
 from .datasets.ho3d.ho3d import HO3D
 from .datasets.fphab.fphab import FPHAB
 from .datasets.interhand26m.interhand import InterHand
 from .datasets.interhand26m.mini_interhand_v1 import MiniInterHand_v1
 
-
+from .batch_samplers import SUBatchSampler
 from .singlehand_img_dataset import ShImgDataset
 from .supervised_singlehand_img_dataset import SupervisedShImgDataset
 from .unsupervised_singlehand_img_dataset import UnsupervisedShImgDataset
@@ -39,6 +39,9 @@ dataset_dict = {
     "pair_unsupervised_supervised_singlehand_img":PairUnsupSupShImgDataset,
     }
 
+batch_sampler_dict= {
+    "supervised_unsupervised":SUBatchSampler,
+    }
 
 
 def worker_init_fn(worker_id):
@@ -180,14 +183,27 @@ def get_dataloaders(
       training=training,
       **kwargs,
       )
-
-  dataloader = torch.utils.data.DataLoader(dataset=dataset,
-                                           batch_size=cfg.get('batch_size',8),
-                                           num_workers=cfg.get('workers',0),
-                                           collate_fn=collate.meshreg_collate,
-                                           worker_init_fn=worker_init_fn,
-                                           shuffle=shuffle,
-                                           drop_last=False,
-                                           pin_memory=True,
-                                           )
+  if 'batch_sampler' in cfg:
+    batch_sampler = batch_sampler_dict[cfg.batch_sampler](
+        dataset.cumulative_sizes,
+        **cfg.batch_sampler_kwargs,
+        )
+    dataloader = torch.utils.data.DataLoader(dataset=dataset,
+                                             batch_sampler=batch_sampler,
+                                             num_workers=cfg.get('workers',4),
+                                             collate_fn=collate.meshreg_collate,
+                                             worker_init_fn=worker_init_fn,
+                                             pin_memory=True,
+                                             )
+  else:
+    dataloader = torch.utils.data.DataLoader(dataset=dataset,
+                                             batch_size=cfg.get('batch_size',8),
+                                             num_workers=cfg.get('workers',4),
+                                             collate_fn=collate.meshreg_collate,
+                                             worker_init_fn=worker_init_fn,
+                                             shuffle=shuffle,
+                                             drop_last=False,
+                                             pin_memory=True,
+                                             )
   return dataloader
+
