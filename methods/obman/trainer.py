@@ -188,6 +188,7 @@ class ObManTrainer(BaseTrainer):
             batch_size=batch_size,
             input_hw=(h,w),
             device=self.device,
+            color_augment=self.loss_cfg.get('tfeq_color_augment', False),
             )
 
         TFEQ.set_transform_mats()

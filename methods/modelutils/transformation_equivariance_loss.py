@@ -29,11 +29,11 @@ class TfEq(nn.Module):
       max_angle=0.785,
       scale_jitter=0.01,
       center_jitter=0.1,
-      brightness=0.05,
-      contrast=0.05,
-      saturation=0.05,
-      hue=0.05,
-      color_aug=False,
+      brightness=0.25,
+      contrast=0.25,
+      saturation=0.25,
+      hue=0.25,
+      color_augment=False,
       transform_type='rotation',
       device='cpu',
       ):
@@ -46,7 +46,7 @@ class TfEq(nn.Module):
     self.scale_jitter = scale_jitter
     self.center_jitter = center_jitter
 
-    self.color_aug = color_aug
+    self.color_augment = color_augment
     self.brightness = brightness
     self.contrast = contrast
     self.saturation = saturation
@@ -127,7 +127,7 @@ class TfEq(nn.Module):
             'brightness':self.brightness,
             'contrast':self.contrast,
             'hue':self.hue,
-            } if self.color_aug else {},
+            } if self.color_augment else {},
           )
 
     if Fls.joints2d in input_batch:
