@@ -177,6 +177,8 @@ class BaseTrainer(object):
       pred_dict,
       multiFrame=False,
       multiIter=False,
+      keep_all=False,
+      pop_list=['auc3d','woR'],
       ):
     """
     Metric preliminary step
@@ -196,6 +198,11 @@ class BaseTrainer(object):
             gt_dict=gt_dict,
             pred_dict=pred_dict,
             ))
+
+    if not keep_all:
+      for k in pop_list:
+        metrics_dict = dict(filter(lambda elem: k not in elem[0], metrics_dict.items()))
+
     return metrics_dict
 
 

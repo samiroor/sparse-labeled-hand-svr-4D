@@ -90,7 +90,8 @@ def train(
 
     # compute mean of all metrics
     metrics_mean = {
-        metric:np.mean([x[metric] for x in summary]) for metric in summary[0]
+        metric:np.mean([x[metric] for x in summary if metric in x]) \
+        for metric in set().union(*(d.keys() for d in summary))
         }
 
     logging.info(
@@ -137,14 +138,41 @@ def evaluate(
         t.set_postfix(Epoch=epoch+1, Iter=i+1, loss=eval_metrics['loss'])
         t.update()
 
-    # compute mean of all metrics 
-    metrics_num = np.sum([x['samples_number'] for x in summary])
+    # compute mean of all metrics
+    # each summary might have different metrics (averaged over different samples number) 
+    metrics_mean = dict()
+    metrics_dict = dict()
+    for metric in set().union(*(d.keys() for d in summary)):
 
-    metrics_mean = {
-        metric:np.sum([x[metric]*x['samples_number'] for x in summary]) / metrics_num for metric in summary[0]
-        }
-    metrics_mean.update({'samples':float(metrics_num)})
-    metrics_mean.pop('samples_number')
+      if metric == 'loss':
+        metrics_mean.update(
+            {'loss': np.mean([x['loss'] for x in summary if 'loss' in x])}
+            )
+        continue
+
+      if 'samples_number' in metric:
+        metrics_mean.update(
+            {metric: float(np.sum([x[metric] for x in summary if metric in x]))}
+            )
+        continue
+
+      metrics_dict[metric] = defaultdict(list)
+      for x in summary:
+        if metric in x:
+          mean_value = x[metric]
+          samples_num = x[metric.split('__')[0] + '__samples_number']
+          metrics_dict[metric]['mean_value'].append(mean_value)
+          metrics_dict[metric]['samples_num'].append(samples_num)
+          metrics_dict[metric]['value'].append(mean_value * samples_num)
+
+      for k,v in metrics_dict[metric].items():
+        metrics_dict[metric][k] = np.array(v)
+
+    # metrics mean
+    metrics_mean.update(
+        {
+          metric: np.sum(metrics_dict[metric]['value']) / np.sum(metrics_dict[metric]['samples_num']) for metric in metrics_dict
+          })
 
     logging.info(
         "- Eval metrics:\n" + " :: ".join(F"{k}: {v:03.5f}" for k, v in metrics_mean.items())
