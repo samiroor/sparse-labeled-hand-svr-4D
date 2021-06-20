@@ -9,6 +9,9 @@ import kornia
 import kornia.geometry.conversions as kgc
 
 from data import Fields as Fls
+from data import torch_normalize as normalize
+from data import torch_denormalize as denormalize
+
 
 
 class TfEq(nn.Module):
@@ -23,13 +26,14 @@ class TfEq(nn.Module):
       self,
       batch_size=8,
       input_hw=(256,256),
-      max_angle=1.57,
+      max_angle=0.785,
       scale_jitter=0.01,
       center_jitter=0.1,
-      brightness=0.5,
-      contrast=0.5,
-      saturation=0.5,
-      hue=0.5,
+      brightness=0.05,
+      contrast=0.05,
+      saturation=0.05,
+      hue=0.05,
+      color_aug=False,
       transform_type='rotation',
       device='cpu',
       ):
@@ -42,6 +46,7 @@ class TfEq(nn.Module):
     self.scale_jitter = scale_jitter
     self.center_jitter = center_jitter
 
+    self.color_aug = color_aug
     self.brightness = brightness
     self.contrast = contrast
     self.saturation = saturation
@@ -105,8 +110,12 @@ class TfEq(nn.Module):
       would augment all items availbale in input_batch via applyinig transformation matrices!
     """
     output_batch = {}
-    if Fls.mano_shapes in input_batch:
-      output_batch[Fls.mano_shapes] = input_batch[Fls.mano_shapes]
+    for k in [
+        Fls.mano_shapes,
+        Fls.faces,
+        ]:
+      if k in input_batch:
+        output_batch[k] = input_batch[k]
 
     if Fls.images in input_batch:
       output_batch[Fls.images] = transform_img(
@@ -118,7 +127,7 @@ class TfEq(nn.Module):
             'brightness':self.brightness,
             'contrast':self.contrast,
             'hue':self.hue,
-            }
+            } if self.color_aug else {},
           )
 
     if Fls.joints2d in input_batch:
@@ -284,38 +293,27 @@ def transform_img(img, affine_trans, res, color={}):
     img [b, c, h, w]
   """
   batch_size = img.shape[0]
-  img = img.clone()
+
+  # denormalize
+  img = denormalize(img.clone())
 
   with torch.no_grad():
     if bool(color):
-
-      brightness = Uniform(
-          max(0, 1 - color['brightness']), 1 + color['brightness'],
-          ).sample((batch_size, )).to(img.device)
-
-      contrast = Uniform(
-          max(0, 1 - color['contrast']), 1 + color['contrast'],
-          ).sample((batch_size, )).to(img.device)
-
-      saturation = Uniform(
-          max(0, 1 - color['saturation']), 1 + color['saturation'],
-          ).sample((batch_size, )).to(img.device)
-
-      hue = Uniform(-color['hue'], color['hue']).sample((batch_size, )).to(img.device)
-
       aug = kornia.augmentation.ColorJitter(
-          brightness=color['augmentation'],
+          brightness=color['brightness'],
           contrast=color['contrast'],
           saturation=color['saturation'],
           hue=color['hue'],
           )
-
-      img = aug(img)
+      img = aug(img).clamp(0,1)
 
     img_tf = kornia.warp_affine(
-        img,
+        img.clone(),
         affine_trans[:, :2, :],
         dsize=res,
         )
+
+  # normalize
+  img_tf = normalize(img_tf)
 
   return img_tf
