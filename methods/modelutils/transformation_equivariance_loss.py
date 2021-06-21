@@ -73,7 +73,7 @@ class TfEq(nn.Module):
     scale = torch.ones(batch_size, ) * max(input_hw)
     if 'scale' in self.transform_type:
       scale_jitter = (Normal(0, 1).sample((batch_size,)) + 1.) * self.scale_jitter
-      sacle_jitter = sacle_jitter.clamp(1 - self.scale_jitter, 1 + self.scale_jitter)
+      scale_jitter = scale_jitter.clamp(1 - self.scale_jitter, 1 + self.scale_jitter)
       scale *= scale_jitter
 
     # rotation center
@@ -81,7 +81,7 @@ class TfEq(nn.Module):
     center[..., 0] = input_hw[1] / 2  # x
     center[..., 1] = input_hw[0] / 2  # y
     if 'trans' in self.transform_type:
-      center_jitter = Uniform(-1,1).sample((batch_size, 2)) * scale * self.center_jitter
+      center_jitter = Uniform(-1,1).sample((batch_size, 2)) * scale[:, None] * self.center_jitter
       center += center_jitter
 
     # rotation
