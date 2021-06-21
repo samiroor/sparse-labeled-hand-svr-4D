@@ -27,6 +27,7 @@ class ObMan(nn.Module):
       scale_factor=0.0001,
       trans_factor=100.0,
       off_z=0.4,
+      manolayer_full_poses=None,
       **kwargs):
 
     super().__init__()
@@ -57,6 +58,8 @@ class ObMan(nn.Module):
     self.adaptor_path = adaptor_path
     self.adaptor = ManoAdaptor(load_path=self.adaptor_path)
     rec_freeze(self.adaptor)
+
+    self.manolayer_full_poses = manolayer_full_poses
 
 
   def forward(self, input_batch):

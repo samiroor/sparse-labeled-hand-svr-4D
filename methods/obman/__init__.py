@@ -112,6 +112,18 @@ def get_model(
       mano_root=mano_root,
       )
 
+  manolayer_full_poses = ManoLayer(
+      ncomps=45,
+      use_pca=False,
+      side=ref_side,
+      center_idx=center_idx,
+      flat_hand_mean=flat_hand_mean,
+      root_rot_mode=root_rot_mode,
+      joint_rot_mode=joint_rot_mode,
+      mano_root=mano_root,
+      )
+
+
   encoder = encoder_dict[encoder](
       **encoder_kwargs).to(device) if encoder in encoder_dict else None
 
@@ -141,15 +153,16 @@ def get_model(
       shape_head=shape_head,
       st_head=st_head,
       obj_st_head=obj_st_head,
-      scale_factor=scale_factor,
-      trans_factor=trans_factor,
-      off_z=off_z,
+      adaptor_path=adaptor_path,
       return_tail_features=return_tail_features,
       return_encoder_features=return_encoder_features,
       return_encoder_spatial_features=return_encoder_spatial_features,
       return_encoder_tail_features=return_encoder_tail_features,
-      adaptor_path=adaptor_path,
       annot_metric=annot_metric,
+      scale_factor=scale_factor,
+      trans_factor=trans_factor,
+      off_z=off_z,
+      manolayer_full_poses=manolayer_full_poses, #to use in other attached networks
       **kwargs,
       )
 

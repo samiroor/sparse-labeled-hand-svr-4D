@@ -189,6 +189,7 @@ class ObManTrainer(BaseTrainer):
             input_hw=(h,w),
             device=self.device,
             color_augment=self.loss_cfg.get('tfeq_color_augment', False),
+            transform_type=self.loss_cfg.get('tfeq_transform_type', 'rotation'),
             )
 
         TFEQ.set_transform_mats()
