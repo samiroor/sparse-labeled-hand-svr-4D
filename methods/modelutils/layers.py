@@ -1,5 +1,9 @@
 import torch
-from torch import nn
+from torch import nn, einsum
+import torch.nn.functional as F
+
+
+from einops import rearrange
 
 
 def get_activation(name):
@@ -137,3 +141,83 @@ class PositionalEncoding(nn.Module):
     omega_X = X[...,None] @ self.omega_range
     omega_X = omega_X.view(*X.shape[:-1],-1)
     return torch.cat([torch.cos(omega_X),torch.sin(omega_X)], dim=-1)
+
+class RelPosEmb(nn.Module):
+    def __init__(
+            self,
+            max_pos_size,
+            dim_head
+    ):
+        super().__init__()
+        self.rel_height = nn.Embedding(2 * max_pos_size - 1, dim_head)
+        self.rel_width = nn.Embedding(2 * max_pos_size - 1, dim_head)
+
+        deltas = torch.arange(max_pos_size).view(1, -1) - torch.arange(max_pos_size).view(-1, 1)
+        rel_ind = deltas + max_pos_size - 1
+        self.register_buffer('rel_ind', rel_ind)
+
+    def forward(self, q):
+        batch, heads, h, w, c = q.shape
+        height_emb = self.rel_height(self.rel_ind[:h, :h].reshape(-1))
+        width_emb = self.rel_width(self.rel_ind[:w, :w].reshape(-1))
+
+        height_emb = rearrange(height_emb, '(x u) d -> x u () d', x=h)
+        width_emb = rearrange(width_emb, '(y v) d -> y () v d', y=w)
+
+        height_score = einsum('b x y d, x u v d -> b x y u v', q, height_emb)
+        width_score = einsum('b x y d, y u v d -> b x y u v', q, width_emb)
+
+        return height_score + width_score
+
+class CrossTransformer(nn.Module):
+  """Cross Transformer layer"""
+
+  def __init__(self,
+               dim=512,
+               dim_key=128,
+               dim_value=512,
+               qk_same_proj=False,
+               positional_embedding=False,
+               max_pos_size=100,
+               compute_s_v=False):
+    super().__init__()
+    self.scale = dim_key ** -0.5
+    self.qk_same_proj = qk_same_proj
+    if qk_same_proj:
+      self.to_q = nn.Conv2d(dim, dim_key, 1, bias=False)
+      self.to_k = None
+    else:
+      self.to_q = nn.Conv2d(dim, dim_key, 1, bias=False)
+      self.to_k = nn.Conv2d(dim, dim_key, 1, bias=False)
+    self.to_v = nn.Conv2d(dim, dim_value, 1, bias=False)
+    self.pos_emb = None
+    if positional_embedding:
+      self.pos_emb = RelPosEmb(max_pos_size, dim_key)
+    self.compute_s_v = compute_s_v
+
+  def forward(self, s, u):
+    # s : b, dim, u, v
+    # u : b, dim, h, w
+    # 
+    to_k = self.to_k or self.to_q
+    q = self.to_q(s) # q: b, c, u, v
+    k = to_k(u) # k: b, c, h, w
+    v = self.to_v(u) # v: b, d, h, w
+    b, c, u, v =  q.shape
+    _,_,h,w = k.shape
+    q, k = map(lambda t: rearrange(t, 'b c x y -> b x y c', h=heads), (q, k))
+    sim = einsum('b u v c, b h w c -> b u v h w', q, k) * self.scale
+    if self.pos_emb is not None:
+      sim_pos = self.pos_emb(q)
+      sim = sim + sim_pos
+    sim = rearrange(sim, 'b u v h w -> b u v (h w)')
+    attn = sim.softmax(dim=-1)
+    attn = rearrange(attn, 'b u v (h w) -> b u v h w', u=u)
+    out = einsum('b u v h w, b d h w -> b d u v', attn, v) #s_aligned from u in v-space
+    if self.compute_s_v:
+      s_v = self.to_v(s) # s in v-space
+      return out, s_v
+    return out
+
+
+
