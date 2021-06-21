@@ -57,8 +57,13 @@ def get_model(
 
   # shortcuts
   morph_key = cfg.get('morph_key', 'verts3d')
+  morph_shape = cfg.get('morph_shape', False)
+  invert_from_gts = cfg.get('invert_from_gts', False)
+  infer_from_gts = cfg.get('infer_from_gts', True)
+
   use_tail_features = cfg.get('use_tail_features', False)
   use_encoder_tail_features = cfg.get('use_encoder_tail_features', False)
+
 
   # mesh predictor
   mesh_predictor = cfg.get('mesh_predictor', 'obman')
@@ -129,16 +134,17 @@ def get_model(
   velocity_field = velocity_field_dict[velocity_field](**velocity_field_kwargs)
   flow = flow_dict[flow](velocity_field, **flow_kwargs)
 
-
   model = PairFlow(
       mesh_predictor=mesh_predictor,
       context_head=context_head,
       flow=flow,
       morph_key=morph_key,
       feature_key=feature_key,
+      morph_shape=morph_shape,
+      invert_from_gts=invert_from_gts,
+      infer_from_gts=infer_from_gts,
       **kwargs,
       )
-
 
   return  model
 

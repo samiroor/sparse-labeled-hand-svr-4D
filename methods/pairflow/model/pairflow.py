@@ -14,6 +14,9 @@ class PairFlow(nn.Module):
       flow,
       morph_key="verts3d", #doesnot work on relative
       feature_key='encoder_features',
+      morph_shape=False,
+      invert_from_gts=False,
+      infer_from_gts=True,
       **kwargs,
       ):
 
@@ -61,6 +64,7 @@ class PairFlow(nn.Module):
       self.morph_key = Fls.verts3d_rel
     elif morph_key == "mano_params":
       self.morph_key = Fls.mano_params
+      self.morph_shape = morph_shape
     else:
       raise NotImplementedError()
 
@@ -71,11 +75,22 @@ class PairFlow(nn.Module):
     else:
       self.feature_key = Fls.encoder_features
 
+    self.invert_from_gts = invert_from_gts
+    self.infer_from_gts = infer_from_gts
+
     self.center_idx = self.mesh_predictor.center_idx
+    self.annot_metric = self.mesh_predictor.annot_metric
     self.adaptor = self.mesh_predictor.adaptor
 
 
-  def forward(self, input_batch, fwd=True, invert=False, infer=False):
+  def forward(
+      self,
+      input_batch,
+      fwd=True,
+      invert=False,
+      infer=False,
+      ):
+
     output_batch = None
     assert 'supervised' in input_batch
     assert 'unsupervised' in input_batch
@@ -86,65 +101,65 @@ class PairFlow(nn.Module):
 
     output_batch = {
         'mesh_predictor':{
-          'supervised':supervised_output,
-          'unsupervised':unsupervised_output,
+          'supervised': supervised_output,
+          'unsupervised': unsupervised_output,
           },
-        'flow':{},
+        'flow': {},
         }
 
-    # inference GT supervised ==> Unsupervised
-    if infer:
-      context = self.context_head(
-          unsupervised_output[self.feature_key],
-          supervised_output[self.feature_key],
-          )
-
-      morphed_output = self.morph(
-          input_batch['supervised'] if self.morph_key not in (Fls.mano_params,) else supervised_output,
-          context,
-          )
-
-      output_batch['flow'].update({
-        'infer_unsupervised':morphed_output,
-        })
-
-    # inverse supervised ==> Unsupervised
-    if invert:
-      context = self.context_head(
-          unsupervised_output[self.feature_key],
-          supervised_output[self.feature_key],
-          )
-
-      morphed_output = self.morph(supervised_output, context)
-
-      output_batch['flow'].update({
-        'unsupervised':morphed_output,
-        })
-
-    # Unsupervised ==> supervised
+    # Fwd: Unsupervised ==> Supervised
     if fwd:
       context = self.context_head(
           supervised_output[self.feature_key],
           unsupervised_output[self.feature_key],
           )
 
-      morphed_output = self.morph(unsupervised_output, context)
+      output_batch['flow']['supervised'] = self.morph(unsupervised_output, context)
 
-      output_batch['flow'].update({
-        'supervised':morphed_output,
-        })
+    # Invert (bkw): supervised ==> Unsupervised
+    if invert or infer:
+      context = self.context_head(
+          unsupervised_output[self.feature_key],
+          supervised_output[self.feature_key],
+          )
+
+    if invert:
+      output_batch['flow']['unsupervised'] = self.morph(
+          input_batch['supervised'] if self.invert_from_gts else supervised_output,
+          context,
+          )
+
+    if infer:
+      if invert and (self.infer_from_gts == self.invert_from_gts):
+        output_batch['flow']['infer_unsupervised'] = output_batch['flow']['unsupervised']
+      else:
+        output_batch['flow']['infer_unsupervised'] = self.morph(
+            input_batch['supervised'] if self.infer_from_gts else supervised_output,
+            context,
+            )
 
     return output_batch
 
 
-  def morph(self, input_batch, context):
+  def morph(
+      self,
+      input_batch,
+      context,
+      ):
+
     assert all(_ in input_batch for _ in (self.morph_key, ))
 
-    if self.morph_key in (Fls.verts3d,):
-      output_batch = self.morph_verts(input_batch, context)
+    if self.morph_key in (Fls.verts3d, ):
+      output_batch = self.morph_3Dpoints(
+          input_batch,
+          context,
+          )
 
     elif self.morph_key in (Fls.mano_params, ):
-      output_batch = self.morph_mano_params(input_batch, context)
+      output_batch = self.morph_mano_params(
+          input_batch,
+          context,
+          )
 
     else:
       raise NotImplementedError()
@@ -152,9 +167,17 @@ class PairFlow(nn.Module):
     return output_batch
 
 
-  def morph_verts(self, input_batch, context):
+  def morph_3Dpoints(
+      self,
+      input_batch,
+      context,
+      ):
+
     points = input_batch[self.morph_key]
-    morphed_points = self.flow(points, context)
+    morphed_points = self.flow(
+        points,
+        context,
+        )
 
     if self.flow.return_multiTime:
       T, B = morphed_points.shape[:2]
@@ -191,24 +214,48 @@ class PairFlow(nn.Module):
           }
 
 
-  def morph_mano_params(self, input_batch, context):
+  def morph_mano_params(
+      self,
+      input_batch,
+      context,
+      morph_shape=False,
+      ):
+
     if self.morph_key == Fls.mano_params:
 
-      mano_params = input_batch[self.morph_key]
+      mano_params = input_batch[Fls.mano_params]
       pose, shape, root = mano_params[:, :-13], mano_params[:, -13:-3], mano_params[:, -3:]
 
-      points = torch.cat([pose, root], dim=-1).unsqueeze(1)
-      morphed_points = self.flow(points, context)
-      morphed_shape = shape
+      field_dim = pose.shape[-1] + 10 + 3 if self.morph_shape else pose.shape[-1] + 3
+
+      if field_dim < self.flow.velocity_field.in_dim :
+        # pose is pca; flow is on full pose
+        pose = input_batch[Fls.mano_full_poses]
+
+      if field_dim > self.flow.velocity_field.in_dim :
+        # pose is full; flow is on pca
+        pass
+
+      field_dim = pose.shape[-1] + 10 + 3 if self.morph_shape else pose.shape[-1] + 3
+      assert field_dim == self.flow.velocity_field.in_dim, "Expected same dimension for morphing."
+
+      points = torch.cat(
+          [pose, shape, root] if self.morph_shape else [pose, root],
+          dim=-1,
+          ).unsqueeze(1)
+
+      morphed_points = self.flow(
+          points,
+          context,
+          )
 
       if self.flow.return_multiTime:
         T, B = morphed_points.shape[:2]
-        shape = shape[None].repeat(T, 1, 1)
         morphed_points = morphed_points.contiguous().view(T*B, *morphed_points.shape[2:])
-        morphed_shape = shape.contiguous().view(T*B, *shape.shape[2:])
 
-      morphed_root = morphed_points[:,:, -3:].squeeze()
-      morphed_pose = morphed_points[:, :, :-3].squeeze()
+      morphed_pose = morphed_points[..., :-13].squeeze()
+      morphed_root = morphed_points[..., -3:].squeeze()
+      morphed_shape = morphed_points[..., -13:-3].squeeze() if self.morphed_shape else shape.repeat(morphed_points.shape[0], 1)
 
       verts3d_rel, joints3d_rel = self.mesh_predictor.manolayer(
           th_pose_coeffs=morphed_pose,
@@ -216,30 +263,36 @@ class PairFlow(nn.Module):
           )
 
       # annotation metric
-      if self.mesh_predictor.annot_metric == "m":
+      if self.annot_metric == "m":
         verts3d_rel /= 1000.0
         joints3d_rel /= 1000.0
 
       joints3d = joints3d_rel + morphed_root.unsqueeze(1)
       verts3d = verts3d_rel + morphed_root.unsqueeze(1)
-      mano_params = torch.cat([morphed_pose, morphed_shape, morphed_root], dim=-1)
+      mano_params = torch.cat(
+          [morphed_pose, morphed_shape, morphed_root],
+          dim=-1,
+          )
+
+      # output
+      if self.flow.return_multiTime:
+        output = {
+            Fls.verts3d: verts3d.contiguous().view(T, B, *verts3d.shape[1:]),
+            Fls.verts3d_rel: verts3d_rel.contiguous().view(T, B, *verts3d_rel.shape[1:]),
+            Fls.joints3d: joints3d.contiguous().view(T, B, *joints3d.shape[1:]),
+            Fls.joints3d_rel: joints3d_rel.contiguous().view(T, B, *joints3d_rel.shape[1:]),
+            Fls.mano_params: mano_params.contiguous().view(T, B, *mano_params.shape[1:])
+            }
+      else:
+         outputi = {
+            Fls.verts3d: verts3d,
+            Fls.verts3d_rel: verts3d_rel,
+            Fls.joints3d: joints3d,
+            Fls.joints3d_rel: joints3d_rel,
+            Fls.mano_params: mano_params,
+            }
 
     else:
       raise NotImplementedError()
 
-    if self.flow.return_multiTime:
-      return {
-          Fls.verts3d: verts3d.contiguous().view(T, B, *verts3d.shape[1:]),
-          Fls.verts3d_rel: verts3d_rel.contiguous().view(T, B, *verts3d_rel.shape[1:]),
-          Fls.joints3d: joints3d.contiguous().view(T, B, *joints3d.shape[1:]),
-          Fls.joints3d_rel: joints3d_rel.contiguous().view(T, B, *joints3d_rel.shape[1:]),
-          Fls.mano_params: mano_params.contiguous().view(T, B, *mano_params.shape[1:])
-          }
-    else:
-      return {
-          Fls.verts3d: verts3d,
-          Fls.verts3d_rel: verts3d_rel,
-          Fls.joints3d: joints3d,
-          Fls.joints3d_rel: joints3d_rel,
-          Fls.mano_params: mano_params,
-          }
+    return output

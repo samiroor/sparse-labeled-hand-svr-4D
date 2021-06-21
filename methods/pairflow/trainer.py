@@ -401,6 +401,16 @@ class PairFlowTrainer(BaseTrainer):
             ]
           )
 
+    if 'infer_unsupervised' in output_batch['flow']:
+      metric_list.append(
+          [
+            'flow_infer_u',
+            unsupervised_batch,
+            output_batch['flow']['infer_unsupervised'],
+            ]
+          )
+
+
     ### compute metrics ###
 
     metric_dict = dict()
