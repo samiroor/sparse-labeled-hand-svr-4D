@@ -105,6 +105,12 @@ class ObMan(nn.Module):
         Fls.verts3d_rel: verts3d_rel,
         Fls.mano_poses: pose,
         }
+
+    if self.manolayer.use_pca:
+      output_batch[Fls.mano_full_poses] = torch.cat(
+          [pose[:, :3], pose[:, 3:].mm(self.manolayer.th_selected_comps)],
+          dim=-1)
+
     if shape is not None:
       output_batch[Fls.mano_shapes] = shape
 

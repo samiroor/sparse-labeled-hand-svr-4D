@@ -9,6 +9,7 @@ class Fields(object):
   mano_params = "mano_params"
   mano_shapes = "mano_shapes"
   mano_poses = "mano_poses"
+  mano_full_poses = "mano_full_poses"
   mano_poses_quat = "mano_poses_quat"
 
   verts3dcan= "verts3dcan"
