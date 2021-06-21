@@ -256,6 +256,7 @@ class PairFlowTrainer(BaseTrainer):
             input_hw=(h,w),
             device=self.device,
             color_augment=self.loss_cfg.get('tfeq_color_augment', False),
+            transform_type=self.loss_cfg.get('tfeq_transform_type', 'rotation'),
             )
 
         TFEQ.set_transform_mats()
@@ -433,6 +434,7 @@ class PairFlowTrainer(BaseTrainer):
       output_batch=None,
       step_mode='infer',
       vis_dir='',
+      save_ply=False,
       ):
 
     if output_batch is None:
@@ -454,7 +456,7 @@ class PairFlowTrainer(BaseTrainer):
           output_batch['mesh_predictor']['supervised'],
           return_render_images=True,
           display_render=True,
-          save_ply=True,
+          save_ply=save_ply,
           suffix='mesh_predictor_s_',
           vis_dir=vis_dir,
           )
@@ -464,7 +466,7 @@ class PairFlowTrainer(BaseTrainer):
         output_batch['mesh_predictor']['unsupervised'],
         return_render_images=True,
         display_render=True,
-        save_ply=True,
+        save_ply=save_ply,
         suffix='mesh_predictor_u_',
         vis_dir=vis_dir,
         )
@@ -478,7 +480,7 @@ class PairFlowTrainer(BaseTrainer):
           output_batch['flow']['infer_unsupervised'],
           return_render_images=True,
           display_render=True,
-          save_ply=True,
+          save_ply=save_ply,
           suffix='flow_infe_u_',
           vis_dir=vis_dir,
           )
@@ -492,7 +494,7 @@ class PairFlowTrainer(BaseTrainer):
           output_batch['flow']['supervised'],
           return_render_images=True,
           display_render=True,
-          save_ply=True,
+          save_ply=save_ply,
           suffix='flow_s_',
           vis_dir=vis_dir,
           )

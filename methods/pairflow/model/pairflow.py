@@ -116,7 +116,7 @@ class PairFlow(nn.Module):
 
       output_batch['flow']['supervised'] = self.morph(unsupervised_output, context)
 
-    # Invert (bkw): supervised ==> Unsupervised
+    # Invert (bkw) & Infer: supervised ==> Unsupervised
     if invert or infer:
       context = self.context_head(
           unsupervised_output[self.feature_key],
@@ -252,15 +252,23 @@ class PairFlow(nn.Module):
       if self.flow.return_multiTime:
         T, B = morphed_points.shape[:2]
         morphed_points = morphed_points.contiguous().view(T*B, *morphed_points.shape[2:])
+      else:
+        T = 1
 
-      morphed_pose = morphed_points[..., :-13].squeeze()
+      morphed_pose = (morphed_points[..., :-13] if self.morph_shape else morphed_points[..., :-3]).squeeze()
+      morphed_shape = morphed_points[..., -13:-3].squeeze() if self.morph_shape else shape[None].repeat(T, 1, 1).view(morphed_points.shape[0], 10)
       morphed_root = morphed_points[..., -3:].squeeze()
-      morphed_shape = morphed_points[..., -13:-3].squeeze() if self.morphed_shape else shape.repeat(morphed_points.shape[0], 1)
 
-      verts3d_rel, joints3d_rel = self.mesh_predictor.manolayer(
-          th_pose_coeffs=morphed_pose,
-          th_betas=morphed_shape,
-          )
+      if morphed_pose.shape[-1] == self.mesh_predictor.manolayer.ncomps+3:
+        verts3d_rel, joints3d_rel = self.mesh_predictor.manolayer(
+            th_pose_coeffs=morphed_pose,
+            th_betas=morphed_shape,
+            )
+      else:
+        verts3d_rel, joints3d_rel = self.mesh_predictor.manolayer_full_poses(
+            th_pose_coeffs=morphed_pose,
+            th_betas=morphed_shape,
+            )
 
       # annotation metric
       if self.annot_metric == "m":
@@ -273,23 +281,30 @@ class PairFlow(nn.Module):
           [morphed_pose, morphed_shape, morphed_root],
           dim=-1,
           )
+      mano_poses = morphed_pose
+      mano_shapes = morphed_shape
 
       # output
+
       if self.flow.return_multiTime:
         output = {
             Fls.verts3d: verts3d.contiguous().view(T, B, *verts3d.shape[1:]),
             Fls.verts3d_rel: verts3d_rel.contiguous().view(T, B, *verts3d_rel.shape[1:]),
             Fls.joints3d: joints3d.contiguous().view(T, B, *joints3d.shape[1:]),
             Fls.joints3d_rel: joints3d_rel.contiguous().view(T, B, *joints3d_rel.shape[1:]),
-            Fls.mano_params: mano_params.contiguous().view(T, B, *mano_params.shape[1:])
+            Fls.mano_params: mano_params.contiguous().view(T, B, *mano_params.shape[1:]),
+            Fls.mano_poses: mano_poses.contiguous().view(T, B, *mano_poses.shape[1:]),
+            Fls.mano_shapes: mano_shapes.contiguous().view(T, B, *mano_shapes.shape[1:]),
             }
       else:
-         outputi = {
+         output = {
             Fls.verts3d: verts3d,
             Fls.verts3d_rel: verts3d_rel,
             Fls.joints3d: joints3d,
             Fls.joints3d_rel: joints3d_rel,
             Fls.mano_params: mano_params,
+            Fls.mano_poses: mano_poses,
+            Fls.mano_shapes: mano_shapes,
             }
 
     else:

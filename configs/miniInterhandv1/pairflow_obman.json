@@ -15,6 +15,9 @@
     "pairflow":{
       "morph_key":"verts3d",
       "use_tail_features":false,
+      "morph_shape":false,
+      "invert_from_gts":false,
+      "infer_from_gts":true,
       "context_base":"fcs",
       "context_base_kwargs":{
         "ch_in":512, #"feature_dim",

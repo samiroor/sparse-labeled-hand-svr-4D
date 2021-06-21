@@ -24,6 +24,7 @@ class VelocityField(nn.Module):
     super().__init__()
     assert(cond_mode in ['add','cat'])
     self.cond_mode = cond_mode
+    self.in_dim = in_dim
 
     self.positional_encoder = PositionalEncoding(**positional_encoding_kwargs) if use_positional_encoding else None
     in_dim = in_dim if self.positional_encoder is None else self.positional_encoder.get_dim(in_dim)
