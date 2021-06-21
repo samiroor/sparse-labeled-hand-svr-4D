@@ -482,7 +482,6 @@ if __name__ == '__main__':
 
     epoch = trainer.restore_model(
         args.restore_file,
-        off_scheduler=True,
         )
 
 
