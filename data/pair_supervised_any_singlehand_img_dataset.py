@@ -103,6 +103,7 @@ class PairSupAnyShImgDataset(SupervisedShImgDataset):
       frame,
       gap,
       first_next=True,
+      s_u_ratio = 0.5,
       ):
 
     """
@@ -111,15 +112,36 @@ class PairSupAnyShImgDataset(SupervisedShImgDataset):
       so to have an unsupervised frame picked logically, given spacing should satisfy
       "spacing < 1/supervisory_fraction"
     """
+    if random.random() < s_u_ratio:
+      frames = video.get_nearest_supervised_frames(
+          frame + gap if first_next else frame - gap,
+          n=1,
+          )
+      return frames[0], 1
+    else:
+      return self.pass_unsupervised_frame(
+          video,
+          frame,
+          gap,
+          first_next,
+          )
+
+  def pass_unsupervised_frame(self, video, frame, gap, first_next=True):
+    """
+      To have correct setting, note that
+      supervised frames are set as Start + Every 1/supervisory_fraction frames + End
+      so to have an unsupervised frame picked logically, given spacing should satisfy
+      "spacing < 1/supervisory_fraction"
+    """
     if first_next:
-      frames, _ = video.get_next_frames(frame + gap, n=1, spacing=1)
+      frames, _ = video.get_next_unsupervised_frames(frame + gap, n=1, spacing=1)
       if len(frames) < 1:
-        frames, _ = video.get_prior_frames(frame - gap, n=1, spacing=1)
+        frames,_ = video.get_prior_unsupervised_frames(frame - gap, n=1, spacing=1)
 
     else:
-      frames, _ = video.get_prior_frames(frame - gap, n=1, spacing=1)
+      frames,_ = video.get_prior_unsupervised_frames(frame - gap, n=1, spacing=1)
       if len(frames) < 1:
-        frames, _ = video.get_next_frames(frame + gap, n=1, spacing=1)
+        frames, _ = video.get_next_unsupervised_frames(frame + gap, n=1, spacing=1)
 
     assert len(frames) !=0, "Expected at least one unsupervised frame!"
     return frames[0], frames[0] in video._supervised_frames
