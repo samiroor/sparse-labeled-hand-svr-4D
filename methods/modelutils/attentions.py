@@ -150,9 +150,9 @@ class VectorAttention(nn.Module):
     # phi_q : query images vector features [B, in_dim]
     # phi_k : key images vector features [B, in_dim] 
 
-    q = self.to_q(phi_q) #B, c, t (key_dim)
-    k = self.to_k(phi_k) #B, c, t (key_dim)
-    V = self.to_v(phi_k) #B, d, t (value_dim)
+    q = self.to_q(phi_q) #B, c (key_dim), t 
+    k = self.to_k(phi_k) #B, c (key_dim), t
+    V = self.to_v(phi_k) #B, d (value_dim), t
 
     # B, B
     sim = torch.matmul(q, k.transpose(-2,-1)) * self.scale
@@ -161,9 +161,9 @@ class VectorAttention(nn.Module):
       sim_pos = self.pos_emb(q)
       sim = sim + sim_pos
 
-    attn = sim.softmax(dim=-1)
+    attn = sim.softmax(dim=-1) #B, c, c
 
-    return torch.matmul(attn, V) #B, c, c
+    return torch.matmul(attn, V) #B, c, t
 
 
 
