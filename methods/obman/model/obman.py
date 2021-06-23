@@ -28,6 +28,7 @@ class ObMan(nn.Module):
       trans_factor=100.0,
       off_z=0.4,
       manolayer_full_poses=None,
+      attention_head=None,
       **kwargs):
 
     super().__init__()
@@ -44,6 +45,7 @@ class ObMan(nn.Module):
 
     self.st_head = st_head
     self.obj_st_head = obj_st_head
+    self.attention_head = attention_head
 
     self.return_tail_features = return_tail_features
     self.return_encoder_features = return_encoder_features
@@ -69,6 +71,11 @@ class ObMan(nn.Module):
     # feature
     if self.encoder.return_spatial_features:
       features, spatial_features = self.encoder(input_batch[Fls.images])
+
+      if self.attention_head is not None:
+        if self.attention_head.name == 'cross':
+          spatial_features = self.attention_head(spatial_features, spatial_features)
+          features = nn.AdaptiveAvgPool2d((1,1)) (spatial_features)
     else:
       features = self.encoder(input_batch[Fls.images])
       spatial_features = None

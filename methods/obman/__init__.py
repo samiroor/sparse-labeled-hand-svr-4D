@@ -6,7 +6,7 @@ from torch import nn
 
 from manopth.manolayer import ManoLayer
 
-from methods.modelutils import encoders, layers
+from methods.modelutils import encoders, layers, attentions
 from methods.obman.model.obman import ObMan
 from methods.obman.trainer import ObManTrainer
 
@@ -22,6 +22,7 @@ optimizer_dict = {
 encoder_dict = {'resnet18': encoders.Resnet18}
 mano_base_dict = {'fcs': layers.fcs}
 st_head_dict = {'fcs': layers.fcs}
+attention_head_dict = {'cross': attentions.MultiHeadCrossAttention}
 
 
 
@@ -65,6 +66,7 @@ def get_model(
     'c_dim':512,
     'use_linear':True,
     'return_spatial_features':False,
+    'return_layers':['layer4']
     })
 
   c_dim = encoder_kwargs['c_dim'] # encoder output dim
@@ -101,6 +103,19 @@ def get_model(
     'flatten':False,
     })
 
+  attention_head = cfg.get('attention_head', None)
+  attention_head_kwargs = cfg.get('attention_head_kwargs',
+      {
+        'in_dim':512,
+        'key_dim':512,
+        'value_dim':512,
+        'qk_same_proj':True,
+        'posirional_encoding':False,
+        'max_pos_size':100
+        })
+
+
+  # make components
   manolayer = ManoLayer(
       ncomps=ncomps,
       use_pca=use_pca,
@@ -123,7 +138,6 @@ def get_model(
       mano_root=mano_root,
       )
 
-
   encoder = encoder_dict[encoder](
       **encoder_kwargs).to(device) if encoder in encoder_dict else None
 
@@ -142,6 +156,9 @@ def get_model(
 
   st_head = st_head_dict[st_head](**st_head_kwargs)
   obj_st_head = st_head_dict[obj_st_head](**obj_st_head_kwargs) if obj_st_head is not None else None
+  attention_head = attention_head_dict[attention_head](**attention_head_kwargs) if attention_head is not None else None
+
+
 
   ### create model ####
   model = ObMan(
@@ -162,7 +179,8 @@ def get_model(
       scale_factor=scale_factor,
       trans_factor=trans_factor,
       off_z=off_z,
-      manolayer_full_poses=manolayer_full_poses, #to use in other attached networks
+      manolayer_full_poses=manolayer_full_poses, #to use in other attached networks,
+      attention_head=attention_head,
       **kwargs,
       )
 
