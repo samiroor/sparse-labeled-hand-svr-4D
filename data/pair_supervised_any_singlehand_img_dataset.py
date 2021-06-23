@@ -43,6 +43,7 @@ class PairSupAnyShImgDataset(SupervisedShImgDataset):
                      **kwargs)
 
     self.gap = gap
+    self.s_u_pick_ratio = 0.5
 
   def __getitem__(self, item):
 
@@ -103,7 +104,6 @@ class PairSupAnyShImgDataset(SupervisedShImgDataset):
       frame,
       gap,
       first_next=True,
-      s_u_ratio = 0.5,
       ):
 
     """
@@ -112,7 +112,7 @@ class PairSupAnyShImgDataset(SupervisedShImgDataset):
       so to have an unsupervised frame picked logically, given spacing should satisfy
       "spacing < 1/supervisory_fraction"
     """
-    if random.random() < s_u_ratio:
+    if random.random() < self.s_u_pick_ratio:
       frames = video.get_nearest_supervised_frames(
           frame + gap if first_next else frame - gap,
           n=1,

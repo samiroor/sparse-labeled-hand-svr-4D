@@ -68,20 +68,29 @@ class ObMan(nn.Module):
     output_batch = None
     assert all(_ in input_batch for _ in (Fls.images, Fls.camsintr, ))
 
-    # feature
-    if self.encoder.return_spatial_features:
-      features, spatial_features = self.encoder(input_batch[Fls.images])
-
-      if self.attention_head is not None:
-        if self.attention_head.name == 'cross':
-          spatial_features = self.attention_head(spatial_features, spatial_features)
-          features = nn.AdaptiveAvgPool2d((1,1)) (spatial_features)
-    else:
-      features = self.encoder(input_batch[Fls.images])
-      spatial_features = None
-
     H, W = tuple(input_batch[Fls.images].shape[2:])
     camsintr = input_batch[Fls.camsintr]
+
+    # encoder features
+    features=None; spatial_features=None
+    if self.encoder.return_spatial_features:
+      features, spatial_features = self.encoder(input_batch[Fls.images])
+    else:
+      features = self.encoder(input_batch[Fls.images])
+
+    # self-attention head
+    if self.attention_head is not None:
+
+      if self.attention_head.name == 'cross':
+        assert spatial_features is not None, 'Expected encoder spatial features!'
+        spatial_features = self.attention_head(spatial_features, spatial_features)
+        features = nn.Flatten() ( nn.AdaptiveAvgPool2d((1,1)) (spatial_features) )
+
+      elif self.attention_head.name == 'vector':
+        features = self.attention_head(features, features)
+
+      else:
+        raise NotImplementedError()
 
     # mano
     mano_features = self.mano_base(features)
