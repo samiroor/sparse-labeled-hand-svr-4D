@@ -1,4 +1,6 @@
 from einops import rearrange
+
+import torch
 from torch import nn, einsum
 
 
@@ -37,7 +39,7 @@ class CrossAttention(nn.Module):
 
     q = self.to_q(phi_q) #B, c (key_dim), u, v
     k = self.to_k(phi_k) #B, c (key_dim), h, w
-    v = self.to_v(phi_k) #B, d (value_dim), h, w
+    V = self.to_v(phi_k) #B, d (value_dim), h, w
 
     b, c, u, v =  q.shape
     _, _, h, w = k.shape
@@ -51,9 +53,9 @@ class CrossAttention(nn.Module):
 
     sim = rearrange(sim, 'b u v h w -> b u v (h w)')
     attn = sim.softmax(dim=-1)
-    attn = rearrange(attn, 'b u v (h w) -> b u v h w', u=u)
+    attn = rearrange(attn, 'b u v (h w) -> b u v h w', h=h)
 
-    out = einsum('b u v h w, b d h w -> b d u v', attn, v)
+    out = einsum('b u v h w, b d h w -> b d u v', attn, V)
 
     return out
 
@@ -74,6 +76,7 @@ class MultiHeadCrossAttention(nn.Module):
 
     super().__init__()
 
+    self.name = 'cross'
     self.heads = nn.ModuleList(
         [
           CrossAttention(
@@ -84,11 +87,11 @@ class MultiHeadCrossAttention(nn.Module):
             positional_encoding=positional_encoding,
             max_pos_size=max_pos_size,
             **kwargs,
-            ) for _ in range(num_heads)
+            ) for _ in range(nheads)
           ]
         )
 
-    self.unify_heads = nn.Conv2d(valuse_dim * num_heads, value_dim, 1, bias=False) if num_heads > 1 else lambda x: x
+    self.unify_heads = nn.Conv2d(value_dim * nheads, value_dim, 1, bias=False) if nheads > 1 else lambda x: x
 
   def forward(
       self,
