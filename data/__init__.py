@@ -19,6 +19,8 @@ from .supervised_singlehand_img_dataset import SupervisedShImgDataset
 from .unsupervised_singlehand_img_dataset import UnsupervisedShImgDataset
 from .pair_supervised_unsupervised_singlehand_img_dataset import PairSupUnsupShImgDataset
 from .pair_supervised_any_singlehand_img_dataset import PairSupAnyShImgDataset
+from .pair_supervised_supervised_singlehand_img_dataset import PairSupSupShImgDataset
+
 
 
 
@@ -36,6 +38,7 @@ dataset_dict = {
     "unsupervised_singlehand_img":UnsupervisedShImgDataset,
     "pair_supervised_unsupervised_singlehand_img":PairSupUnsupShImgDataset,
     "pair_supervised_any_singlehand_img":PairSupAnyShImgDataset,
+    "pair_supervised_supervised_singlehand_img":PairSupSupShImgDataset,
     }
 
 batch_sampler_dict= {
