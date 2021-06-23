@@ -4,7 +4,7 @@ import numpy as np
 from collections import defaultdict
 
 import torch
-from .supervised_any_singlehand_img_dataset import PairSupAnyShImgDataset
+from .pair_supervised_any_singlehand_img_dataset import PairSupAnyShImgDataset
 
 
 """
