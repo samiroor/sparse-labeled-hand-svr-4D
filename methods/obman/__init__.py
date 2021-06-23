@@ -66,7 +66,7 @@ def get_model(
     'c_dim':512,
     'use_linear':True,
     'return_spatial_features':False,
-    'return_layers':['layer4']
+    'return_layer':'layer4'
     })
 
   c_dim = encoder_kwargs['c_dim'] # encoder output dim

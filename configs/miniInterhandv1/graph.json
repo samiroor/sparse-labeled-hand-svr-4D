@@ -28,7 +28,7 @@
         "c_dim":512, #reduced feat out_dim
         "use_linear":true, #put an extra fc
         "return_spatial_features":false,
-        "return_layers":["layer4"]
+        "return_layer":"layer4"
       },
       "graph_base":"fcs",
       "graph_base_kwargs":{

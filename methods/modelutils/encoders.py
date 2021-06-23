@@ -21,13 +21,13 @@ class Resnet18(nn.Module):
       c_dim,
       use_linear=True,
       return_spatial_features=False,
-      return_layers=['layer4'],
+      return_layer='layer4',
       ):
 
     super().__init__()
     self.use_linear = use_linear
     self.return_spatial_features = return_spatial_features
-    self.return_layers = return_layers
+    self.return_layer = return_layer
 
     self.features = resnet.resnet18(pretrained=True)
     self.features.fc = nn.Sequential()
@@ -40,9 +40,9 @@ class Resnet18(nn.Module):
       raise ValueError('c_dim must be 512 if use_linear is False')
 
   def forward(self, x):
-    features = self.features(x, self.return_layers if self.return_spatial_features else list())
+    features = self.features(x, [self.return_layer] if self.return_spatial_features else list())
     out = self.fc(features['avgpool'])
     if self.return_spatial_features:
       features.pop('avgpool')
-      return out, features
+      return out, features[self.return_layer]
     return out
