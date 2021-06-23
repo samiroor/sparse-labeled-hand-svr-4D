@@ -134,7 +134,7 @@ class VectorAttention(nn.Module):
 
     self.to_q = nn.Linear(in_dim, key_dim, bias=False)
     self.to_k = self.to_q if qk_same_proj else  nn.Linear(in_dim, key_dim, bias=False)
-    self.to_v = nn.Linear(in_dim, value_dim, 1, bias=False)
+    self.to_v = nn.Linear(in_dim, value_dim, bias=False)
 
     self.pos_emb = None
     if positional_encoding:
@@ -150,9 +150,9 @@ class VectorAttention(nn.Module):
     # phi_q : query images vector features [B, in_dim]
     # phi_k : key images vector features [B, in_dim] 
 
-    q = self.to_q(phi_q) #B, c (key_dim)
-    k = self.to_k(phi_k) #B, c (key_dim)
-    V = self.to_v(phi_k) #B, d (value_dim)
+    q = self.to_q(phi_q) #B, c, t (key_dim)
+    k = self.to_k(phi_k) #B, c, t (key_dim)
+    V = self.to_v(phi_k) #B, d, t (value_dim)
 
     # B, B
     sim = torch.matmul(q, k.transpose(-2,-1)) * self.scale
@@ -163,7 +163,7 @@ class VectorAttention(nn.Module):
 
     attn = sim.softmax(dim=-1)
 
-    return torch.matmul(attn, V)
+    return torch.matmul(attn, V) #B, c, c
 
 
 
@@ -206,8 +206,8 @@ class MultiHeadVectorAttention(nn.Module):
       ):
     """
     Args:
-      phi_q (torch.Tensor): query images vector features [B, in_dim]
-      phi_k (torch.Tensor): key images vector features [B, in_dim]
+      phi_q (torch.Tensor): query images vector features [B, in_dim, t]
+      phi_k (torch.Tensor): key images vector features [B, in_dim, t]
 
     return
       [B, value_dim]
