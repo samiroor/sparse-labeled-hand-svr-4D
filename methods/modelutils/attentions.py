@@ -113,3 +113,110 @@ class MultiHeadCrossAttention(nn.Module):
           dim=1,
           )
         )
+
+
+
+class VectorAttention(nn.Module):
+  def __init__(
+      self,
+      in_dim=512,
+      key_dim=128,
+      value_dim=512,
+      qk_same_proj=False,
+      positional_encoding=False,
+      max_pos_size=100,
+      **kwargs,
+      ):
+
+    super().__init__()
+    self.name = 'vector'
+    self.scale = key_dim ** -0.5
+
+    self.to_q = nn.Linear(in_dim, key_dim, bias=False)
+    self.to_k = self.to_q if qk_same_proj else  nn.Linear(in_dim, key_dim, bias=False)
+    self.to_v = nn.Linear(in_dim, value_dim, 1, bias=False)
+
+    self.pos_emb = None
+    if positional_encoding:
+      pass #TODO
+
+
+  def forward(
+      self,
+      phi_q,
+      phi_k,
+      ):
+
+    # phi_q : query images vector features [B, in_dim]
+    # phi_k : key images vector features [B, in_dim] 
+
+    q = self.to_q(phi_q) #B, c (key_dim)
+    k = self.to_k(phi_k) #B, c (key_dim)
+    V = self.to_v(phi_k) #B, d (value_dim)
+
+    # B, B
+    sim = torch.matmul(q, k.transpose(-2,-1)) * self.scale
+
+    if self.pos_emb is not None:
+      sim_pos = self.pos_emb(q)
+      sim = sim + sim_pos
+
+    attn = sim.softmax(dim=-1)
+
+    return torch.matmul(attn, V)
+
+
+
+class MultiHeadVectorAttention(nn.Module):
+  def __init__(
+      self,
+      nheads=1,
+      in_dim=512,
+      key_dim=128,
+      value_dim=512,
+      qk_same_proj=False,
+      positional_encoding=False,
+      max_pos_size=100,
+      **kwargs,
+      ):
+
+    super().__init__()
+
+    self.name = 'vector'
+    self.heads = nn.ModuleList(
+        [
+          VectorAttention(
+            in_dim=in_dim,
+            key_dim=key_dim,
+            value_dim=value_dim,
+            qk_same_proj=qk_same_proj,
+            positional_encoding=positional_encoding,
+            max_pos_size=max_pos_size,
+            **kwargs,
+            ) for _ in range(nheads)
+          ]
+        )
+
+    self.unify_heads = nn.Linear(value_dim * nheads, value_dim, 1, bias=False) if nheads > 1 else lambda x: x
+
+  def forward(
+      self,
+      phi_q,
+      phi_k,
+      ):
+    """
+    Args:
+      phi_q (torch.Tensor): query images vector features [B, in_dim]
+      phi_k (torch.Tensor): key images vector features [B, in_dim]
+
+    return
+      [B, value_dim]
+       Aligned query vector features in value (key) space
+    """
+    return self.unify_heads(
+        torch.cat(
+          [head(phi_q, phi_k) for head in self.heads],
+          dim=1,
+          )
+        )
+
