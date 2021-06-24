@@ -15,6 +15,7 @@ class PairFlow(nn.Module):
       morph_key="verts3d", #doesnot work on relative
       feature_key='encoder_features',
       morph_shape=False,
+      use_gt_mano_shape=False,
       invert_from_gts=False,
       infer_from_gts=True,
       **kwargs,
@@ -64,7 +65,6 @@ class PairFlow(nn.Module):
       self.morph_key = Fls.verts3d_rel
     elif morph_key == "mano_params":
       self.morph_key = Fls.mano_params
-      self.morph_shape = morph_shape
     else:
       raise NotImplementedError()
 
@@ -74,6 +74,11 @@ class PairFlow(nn.Module):
       self.feature_key = Fls.encoder_tail_features
     else:
       self.feature_key = Fls.encoder_features
+
+    self.morph_shape = morph_shape
+    self.use_gt_mano_shape = use_gt_mano_shape
+    assert not all(morph_shape, use_gt_mano_shape),\
+        "Could not be applicable together!"
 
     self.invert_from_gts = invert_from_gts
     self.infer_from_gts = infer_from_gts
@@ -114,7 +119,12 @@ class PairFlow(nn.Module):
           unsupervised_output[self.feature_key],
           )
 
-      output_batch['flow']['supervised'] = self.morph(unsupervised_output, context)
+      output_batch['flow']['supervised'] = self.morph(
+          unsupervised_output,
+          context,
+          gt_mano_shape=input_batch['supervised'][Fls.mano_shapes] \
+              if Fls.mano_shapes in input_batch['supervised'] and self.use_gt_mano_shape else None,
+          )
 
     # Invert (bkw) & Infer: supervised ==> Unsupervised
     if invert or infer:
@@ -127,6 +137,8 @@ class PairFlow(nn.Module):
       output_batch['flow']['unsupervised'] = self.morph(
           input_batch['supervised'] if self.invert_from_gts else supervised_output,
           context,
+          gt_mano_shape=input_batch['supervised'][Fls.mano_shapes] \
+              if Fls.mano_shapes in input_batch['supervised'] and self.use_gt_mano_shape else None,
           )
 
     if infer:
@@ -136,6 +148,8 @@ class PairFlow(nn.Module):
         output_batch['flow']['infer_unsupervised'] = self.morph(
             input_batch['supervised'] if self.infer_from_gts else supervised_output,
             context,
+            gt_mano_shape=input_batch['supervised'][Fls.mano_shapes] \
+                if Fls.mano_shapes in input_batch['supervised'] and self.use_gt_mano_shape else None,
             )
 
     return output_batch
@@ -145,6 +159,7 @@ class PairFlow(nn.Module):
       self,
       input_batch,
       context,
+      **kwargs,
       ):
 
     assert all(_ in input_batch for _ in (self.morph_key, ))
@@ -159,6 +174,7 @@ class PairFlow(nn.Module):
       output_batch = self.morph_mano_params(
           input_batch,
           context,
+          **kwargs,
           )
 
     else:
@@ -218,7 +234,7 @@ class PairFlow(nn.Module):
       self,
       input_batch,
       context,
-      morph_shape=False,
+      gt_mano_shape=None,
       ):
 
     if self.morph_key == Fls.mano_params:
@@ -254,6 +270,10 @@ class PairFlow(nn.Module):
         morphed_points = morphed_points.contiguous().view(T*B, *morphed_points.shape[2:])
       else:
         T = 1
+
+      if not self.morph_shape:
+        if gt_mano_shape is not None:
+          shape = gt_mano_shape
 
       morphed_pose = (morphed_points[..., :-13] if self.morph_shape else morphed_points[..., :-3]).squeeze()
       morphed_shape = morphed_points[..., -13:-3].squeeze() if self.morph_shape else shape[None].repeat(T, 1, 1).view(morphed_points.shape[0], 10)

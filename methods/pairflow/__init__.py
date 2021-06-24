@@ -58,6 +58,7 @@ def get_model(
   # shortcuts
   morph_key = cfg.get('morph_key', 'verts3d')
   morph_shape = cfg.get('morph_shape', False)
+  use_gt_mano_shape = cfg.get('use_gt_mano_shape', False)
   invert_from_gts = cfg.get('invert_from_gts', False)
   infer_from_gts = cfg.get('infer_from_gts', True)
 
@@ -141,6 +142,7 @@ def get_model(
       morph_key=morph_key,
       feature_key=feature_key,
       morph_shape=morph_shape,
+      use_gt_mano_shape=use_gt_mano_shape,
       invert_from_gts=invert_from_gts,
       infer_from_gts=infer_from_gts,
       **kwargs,
