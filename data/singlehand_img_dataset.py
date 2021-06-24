@@ -125,7 +125,7 @@ class ShImgDataset(Dataset):
     img = video.get_image(frame) if 'image' in self.labelset else None
     mask = video.get_mask(frame)  if 'mask' in self.labelset else None
 
-    _,verts3d,faces = video.get_verts3d(frame, self._torch_hand_model, self._ref_handside) if 'verts3d' in self.labelset else None
+    _,verts3d,faces = video.get_verts3d(frame, self._torch_hand_model, self._ref_handside) if 'verts3d' in self.labelset else None,None,None
     pose, shape = video.get_mano(frame, self._ref_handside) if 'mano_params' in self.labelset else (None, None)
     joints3d = video.get_joints3d(frame, self._ref_handside)
     joints2d = video.get_joints2d(frame, self._ref_handside)

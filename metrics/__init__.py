@@ -17,7 +17,7 @@ def hand3d_kwargs(gt_dict, pred_dict):
       'xyz_list': gt_dict[Fls.joints3d].detach().cpu().numpy() ,
       'xyz_pred_list': pred_dict[Fls.joints3d].detach().cpu().numpy(),
       })
-  if Fls.verts3d in pred_dict:
+  if Fls.verts3d in pred_dict and Fls.verts3d in gt_dict:
     kwargs.update({
       'verts_list': gt_dict[Fls.verts3d].detach().cpu().numpy(),
       'verts_pred_list': pred_dict[Fls.verts3d].detach().cpu().numpy(),
