@@ -24,7 +24,6 @@ mano_base_dict = {'fcs': layers.fcs}
 st_head_dict = {'fcs': layers.fcs}
 attention_head_dict = {
     'cross': attentions.MultiHeadCrossAttention,
-    'vector': attentions.MultiHeadVectorAttention,
     }
 
 

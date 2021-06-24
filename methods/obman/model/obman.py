@@ -86,9 +86,6 @@ class ObMan(nn.Module):
         spatial_features = self.attention_head(spatial_features, spatial_features)
         features = nn.Flatten() ( nn.AdaptiveAvgPool2d((1,1)) (spatial_features) )
 
-      elif self.attention_head.name == 'vector':
-        features = self.attention_head(features, features)
-
       else:
         raise NotImplementedError()
 
