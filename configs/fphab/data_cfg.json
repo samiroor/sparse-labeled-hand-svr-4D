@@ -1,0 +1,37 @@
+{
+  "inherit_from":null,
+  "seed":7777,
+  "data_spec":{
+    "db_root": "misc/datapath/hand-pose",
+    "name":"fphab",
+    "use_objects":true,
+    "split_mode":"actions",
+    "ref_handside":"right",
+    "annot_metric": "m",
+    "crop_bbox": false,
+    "crop_factor": 1.2,
+    "res_size": [256,256],
+    "ref_bone": [8,9],
+    "root_joint": 0
+  },
+  "augmentation": {
+    "do_scale": false,#"bool same as crop_bbox",
+    "same_scale":false ,
+    "scale_jitter": 0.0,
+    "do_rot": true,
+    "same_rot": true,
+    "max_rot": 0.3925,
+    "do_center": true,
+    "same_center": true,
+    "center_jitter": 0.1,
+    "do_color": true,
+    "same_color": false,
+    "color": {
+      "hue": 0.5,
+      "saturation": 0.5,
+      "contrast": 0.5,
+      "brightness": 0.5,
+      "blur_radius": 0.5
+    }
+  }
+}

@@ -45,6 +45,7 @@
       },
       "st_head":"fcs",
       "obj_st_head":null,
+      "attention_head":null,
       "loss":{
         #"loss_types":["mesh_predictor_s", "mesh_predictor_u"],
         #"mesh_predictor_s":{
