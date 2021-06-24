@@ -55,6 +55,7 @@ def select_data(
     cfg,
     split='train',
     use_mini_dataset=False,
+    mini_dataset_file='*.json',
     mini_dataset={},
     supervise_fraction=1.0,
     add_first_last_frame=True,
@@ -67,17 +68,18 @@ def select_data(
   Read a specific video dataset.
   Args:
     cfg : data specification (Ho3D InterHand etc)
-
+    mini_dataset_file (json file) to read mini_dataset dictionary from that.
+    mini_dataset (dict) {'split': video_dir i.e 'parent_folder(train|test|val)/video__name'}.
+      For instance you can have {'test': 'train/...'}
   """
 
   # subset of data
   if use_mini_dataset:
     if not bool(mini_dataset):
-      subset_file = f"misc/mini_{cfg.name}_v1.json"
-      assert os.path.exists(subset_file), f'Not found "{data_file}".'
-      with open(subset_file, 'r') as f:
+      assert os.path.exists(mini_dataset_file), f'Not found "{mini_dataset_file}".'
+      with open(mini_dataset_file, 'r') as f:
         subset = EasyDict(json.load(f))
-        assert split in subset, f"Expected {split} in {subset_file}."
+        assert split in subset, f"Expected {split} in {mini_dataset_file}."
         mini_dataset = EasyDict({split: subset[split]})
 
   # image features
@@ -133,6 +135,7 @@ def get_dataset(
             data_cfg,
             split=cfg.get('split','train'),
             use_mini_dataset=cfg.get('use_mini_dataset', False),
+            mini_dataset_file=cfg.get('mini_dataset_file', '*.json'),
             mini_dataset=cfg.get('mini_dataset', {}),
             supervise_fraction=cfg.get('supervise_fraction', 1.0),
             add_first_last_frame=cfg.get('add_first_last_frame',True),
