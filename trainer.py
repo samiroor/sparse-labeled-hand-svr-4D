@@ -52,6 +52,7 @@ class BaseTrainer(object):
   def restore_model(
       self,
       restore_file,
+      allow_partial=False,
       ):
     """
     Restoring model.
@@ -62,9 +63,9 @@ class BaseTrainer(object):
     checkpoint = utils.load_checkpoint(
         restore_path,
         self.model,
-        self.optimizer,
-        self.scheduler,
-        allow_partial=False,
+        self.optimizer if not allow_partial else None,
+        self.scheduler if not allow_partial else None,
+        allow_partial=allow_partial,
         )
 
     epoch = checkpoint['epoch']

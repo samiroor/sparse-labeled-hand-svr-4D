@@ -26,10 +26,10 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('--exp_dir', default='exp_dir/config.json', help="Experiment Directory & config")
 parser.add_argument('--restore_file', default=None, help="Weights to reload before training")
+parser.add_argument('--allow_partial', dest='allow_partial', action='store_true')
 parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
 parser.add_argument('--eval_only', dest='eval_only', action='store_true')
 parser.add_argument('--test_only', dest='test_only', action='store_true')
-
 
 
 def restore_metrics(exp_dir):
@@ -204,6 +204,7 @@ def train_evaluate(
     vis_freq=25,
     backup_freq=50,
     restore_file=None,
+    allow_partial=False,
     early_stopping=False,
     early_stopping_patience=0,
     ):
@@ -229,7 +230,10 @@ def train_evaluate(
   # restore weight
   if restore_file:
     restore_metrics(exp_dir)
-    epoch_start = trainer.restore_model(restore_file)
+    epoch_start = trainer.restore_model(
+        restore_file,
+        allow_partial=allow_partial,
+        )
 
   # run for epochs!
   for epoch in range(epoch_start, num_epochs):
@@ -482,6 +486,7 @@ if __name__ == '__main__':
 
     epoch = trainer.restore_model(
         args.restore_file,
+        allow_partial=args.allow_partial,
         )
 
 
@@ -553,6 +558,7 @@ if __name__ == '__main__':
         vis_freq=cfg['training'].get('vis_freq', 8),
         backup_freq=cfg['training'].get('backup_freq', 8),
         restore_file=args.restore_file,
+        allow_partial=args.allow_partial,
         )
 
     # logging metrics
