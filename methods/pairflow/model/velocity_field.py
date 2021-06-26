@@ -16,6 +16,7 @@ class VelocityField(nn.Module):
       cond_mode='add',
       use_positional_encoding=False,
       positional_encoding_kwargs={},
+      **kwargs,
       ):
     """
     Args:

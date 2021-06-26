@@ -8,11 +8,15 @@ from methods.obman import get_model as obman_get_model
 from methods.graph import get_model as graph_get_model
 
 from methods.pairflow.model.resflow import ResFlow
+from methods.pairflow.model.rotation_translation_flow import RotationTranslationFlow
+
 from methods.pairflow.model.velocity_field import VelocityField
+from methods.pairflow.model.rotation_translation_velocity_field import RotationTranslationVelocityField
+
 from methods.pairflow.model.context_head import SubtractContextHead
+
 from methods.pairflow.model.pairflow import PairFlow
 from methods.pairflow.trainer import PairFlowTrainer
-
 
 
 optimizer_dict = {
@@ -39,10 +43,12 @@ context_head_dict = {
 
 velocity_field_dict = {
     'resblock':VelocityField,
+    'rotation_translation': RotationTranslationVelocityField,
     }
 
 flow_dict = {
     'resflow': ResFlow,
+    'rotation_translation':RotationTranslationFlow,
     }
 
 
