@@ -171,7 +171,7 @@ class PairFlowTrainer(BaseTrainer):
         (supervised_batch, unsupervised_batch),
         output_batch,
         step_mode='infer',
-        loss_types=['flow_infer_u'],
+        loss_types=['flow_s'],
         )
 
       eval_dict = loss_dict
