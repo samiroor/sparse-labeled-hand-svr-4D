@@ -27,12 +27,15 @@ class RotationTranslationVelocityField(nn.Module):
       ):
 
     super().__init__()
+    self.in_dim = in_dim
 
     self.linear_dim = in_dim - angular_dim
     self.angular_dim = angular_dim
+    self.cond_mode = cond_mode
+    self.rot_mode = rot_mode
     self.disentangle = disentangle
 
-    if rot_mode == "axisang":
+    if self.rot_mode == "axisang":
       self.quaternion_dim = self.angular_dim // 3 * 4
     else:
       raise NotImplementedError()
@@ -46,7 +49,7 @@ class RotationTranslationVelocityField(nn.Module):
     # condition
     self.fc_c = nn.ModuleList([ nn.Linear(c_dim, hidden_size) for i in range(n_blocks) ])
     self.blocks_c = nn.ModuleList([ ResnetBlockFC(hidden_size) for i in range(n_blocks) ])
-    if cond_mode == 'cat':
+    if self.cond_mode == 'cat':
       self.fc_cat_c = nn.ModuleList([nn.Linear(2 * hidden_size, hidden_size) for i in range(n_blocks) ])
 
     # disentangle hiddens 
@@ -71,7 +74,6 @@ class RotationTranslationVelocityField(nn.Module):
     # remperature_scaling
     self.temperature_scaling = nn.Parameter(torch.ones(in_dim, )) if temperature_scaling else 1.0
     self.n_blocks = n_blocks
-    self.in_dim = in_dim
 
   def forward(self, x, cond):
     """
@@ -80,16 +82,15 @@ class RotationTranslationVelocityField(nn.Module):
     """
     batch_size = x.shape[0]
     N = x.shape[1]
-
     if self.angular_dim > 0:
       # [B*N, 3*j]
-      theta = x[..., :self.angular_dim].view(batch_size * N, -1)
+      theta = x[..., :self.angular_dim].contiguous().view(batch_size * N, -1)
       # [B*N*j, 4]
-      quaternions = axis_angle_to_quaternion(theta.view(-1, 3))
+      quaternions = axis_angle_to_quaternion(theta.contiguous().view(-1, 3))
       quaternions = standardize_quaternion(quaternions)
       # [B, N, 4*j]
-      quaternions = quaternions.view(batch_size, N, -1)
-      # [B, N, self.in_dim]
+      quaternions = quaternions.contiguous().view(batch_size, N, -1)
+      # [B, N, in_dim]
       y = torch.cat(
           [quaternions, x[..., self.angular_dim:]],
           dim=-1,
@@ -97,7 +98,7 @@ class RotationTranslationVelocityField(nn.Module):
     else:
       y = x
 
-    assert self.in_dim == y.shape[-1], "Wrong dimensions!"
+    assert self.quaternion_dim + self.linear_dim == y.shape[-1], "Wrong dimensions!"
 
     # project input
     if self.disentangle:
@@ -142,10 +143,10 @@ class RotationTranslationVelocityField(nn.Module):
     # normalize Dquaternions
     if self.angular_dim > 0:
       out_a = nn.functional.normalize(
-        out_a.view(-1, 4),
+        out_a.contiguous().view(-1, 4),
         dim=-1
         )
-      out_a = standardize_quaternion(out_a).view(batch_size, N, -1)
+      out_a = standardize_quaternion(out_a).contiguous().view(batch_size, N, -1)
 
     # outputs
     if self.angular_dim > 0 and self.linear_dim > 0:

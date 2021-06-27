@@ -42,11 +42,11 @@ class RotationTranslationFlow(nn.Module):
 
       if self.angular_dim > 0 :
         q = quaternion_multiply(
-            out_dict['q'].view(-1, 4),
-            out_dict['dy'][..., :self.quaternion_dim].view(-1, 4),
+            out_dict['q'].contiguous().view(-1, 4),
+            out_dict['dy'][..., :self.quaternion_dim].contiguous().view(-1, 4),
             )
         if self.rot_mode == "axisang":
-          theta = quaternion_to_axis_angle(q).view(*x[..., :self.angular_dim].shape)
+          theta = quaternion_to_axis_angle(q).contiguous().view(*x[..., :self.angular_dim].shape)
         else:
           NotImplementedError()
 
