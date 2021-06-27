@@ -31,60 +31,133 @@ parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
 parser.add_argument('--val_only', dest='val_only', action='store_false')
 parser.add_argument('--test_only', dest='test_only', action='store_true')
 
+parser.add_argument('--mesh_predictor_only', dest='mesh_predictor_only', action='store_true')
 
+
+
+### evaluate Model ###
 def evaluate(
     trainer,
     val_loader,
     vis_data,
     epoch,
-    vis_dir=None,
-    display=False,
     calc_metrics=False,
+    display=False,
     save=False,
+    vis_dir=None,
     save_dir=None,
     ):
-    """
-      Args:
-    """
-    summary = []
-    dataloader = iter(val_loader)
 
-    # use tqdm for progress bar
-    with tqdm(total=len(dataloader)) as t:
-      for i in range(len(dataloader)):
+  summary = []
+  dataloader = iter(val_loader)
 
-        batch_samples = next(dataloader)
+  # use tqdm for progress bar
+  with tqdm(total=len(dataloader)) as t:
+    for i in range(len(dataloader)):
 
-        eval_metrics = trainer.eval_step(
-            batch_samples,
-            vis_dir=vis_dir,
-            display=display and i==0,
-            calc_metrics=calc_metrics,
-            )
+      batch_samples = next(dataloader)
 
-        summary.append(eval_metrics)
-
-        # update tqdm postfix
-        t.set_postfix(Epoch=epoch+1, Iter=i+1, loss=eval_metrics['loss'])
-        t.update()
-
-    # metrics mean
-    metrics_mean = trainer._metric_mean(summary)
-    logging.info(
-        "- Eval metrics:\n" + " :: ".join(F"{k}: {v:03.5f}" for k, v in metrics_mean.items())
-        )
-
-    if display:
-      trainer.visualize_step(
-          vis_data,
-          vis_dir=os.path.join(vis_dir, 'vis_data'),
+      eval_metrics = trainer.eval_step(
+          batch_samples,
+          vis_dir=vis_dir,
+          display=display and i==0,
+          calc_metrics=calc_metrics,
           )
 
-    if save:
-      with open(os.path.join(save_dir, 'summary.pkl'), 'wb') as fp:
-        pickle.dump(summary, fp)
+      summary.append(eval_metrics)
 
-    return metrics_mean
+      # update tqdm postfix
+      t.set_postfix(Epoch=epoch+1, Iter=i+1, loss=eval_metrics['loss'])
+      t.update()
+
+  # metrics mean
+  metrics_mean = trainer._metric_mean(summary)
+  logging.info(
+      "- Eval metrics:\n" + " :: ".join(F"{k}: {v:03.5f}" for k, v in metrics_mean.items())
+      )
+
+  if display:
+    trainer.visualize_step(
+        vis_data,
+        vis_dir=os.path.join(vis_dir, 'vis_data'),
+        )
+
+  if save:
+    with open(os.path.join(save_dir, 'summary.pkl'), 'wb') as fp:
+      pickle.dump(summary, fp)
+
+  return metrics_mean
+
+
+### evaluate Mesh predictor module ###
+def evaluate_mesh_predictor(
+    trainer,
+    val_loader,
+    vis_data,
+    epoch,
+    method_name='pairflow',
+    display=False,
+    save=False,
+    vis_dir=None,
+    save_dir=None,
+    ):
+
+
+  """
+    Evaluate mesh predictor module of different networks (models)!
+    data loader should pass individual samples.
+  """
+
+  summary = []
+  dataloader = iter(val_loader)
+
+  trainer.model.eval()
+  device = trainer.model.device
+
+  if model_name in ("pairflow", ):
+    mesh_predictor = trainer.model.module.mesh_predictor
+  else:
+    mesh_predictor = trainer.model
+
+  with tqdm(total=len(dataloader)) as t:
+    for i in range(len(dataloader)):
+
+      batch_samples = next(dataloader)
+
+      for k in batch_samples:
+        batch_samples[k] = batch_samples[k].float().to(device)
+
+      output_batch =  mesh_predictor(batch_samples)
+
+      eval_metrics = trainer._metric_step(
+          gt_dict=batch_samples,
+          pred_dict=output_batch,
+          )
+
+      summary.append(eval_metrics)
+
+  metrics_mean = trainer._metric_mean(summary)
+
+  if display:
+
+    for k in vis_data:
+      vis_data[k] = vis_data[k].float().to(device)
+    output_batch = mesh_predictor(vis_data)
+
+    trainer._visualize_step(
+        vis_data,
+        output_batch,
+        multiFrame=False,
+        display_render=True,
+        display_skeleton=True,
+        vis_dir=vis_dir,
+        )
+
+  if save:
+    with open(os.path.join(save_dir, 'summary.pkl'), 'wb') as fp:
+      pickle.dump(summary, fp)
+
+  return metrics_mean
 
 
 
@@ -93,13 +166,30 @@ if __name__ == '__main__':
   # load the parameters from json file
   args = parser.parse_args()
   json_path = os.path.join(args.exp_dir, 'config.json')
-  assert os.path.isfile(json_path), f'Not a json configuration file found at "{json_path}"!'
+  assert os.path.isfile(json_path),\
+      f'Not a json configuration file found at "{json_path}"!'
 
   cfg = utils.get_config(json_path)
 
-  # log file
+  # save_dir & log file
   exp_dir = os.path.join(args.exp_dir, 'run')
-  logpath = os.path.join(exp_dir, 'logFile.log')
+
+  suffix = utils.get_spec_name(
+      cfg[f'{"testing" if args.test_only else "evaluating"}'].dataloader
+      )
+
+  if args.mesh_predictor_only:
+    suffix += '_meshPredictorOnly'
+
+  save_dir = os.path.join(
+      exp_dir,
+      f'{"eval_on_" if args.val_only else "test_on_"}\
+          _{args.restore_file[:-3]}_epoch{epoch}',
+      suffix)
+
+  os.makedirs(save_dir, exist_ok=True)
+
+  logpath = os.path.join(save_dir, 'logFile.log')
   utils.set_logger(logpath)
 
   # set device
@@ -199,41 +289,38 @@ if __name__ == '__main__':
       allow_partial=args.allow_partial,
       )
 
-
-  suffix = utils.get_spec_name(
-      cfg[f'{"testing" if args.test_only else "evaluating"}'].dataloader
-      )
-
-  exp_dir = os.path.join(
-      exp_dir,
-      f'{"eval_on_" if args.val_only else "test_on_"}_{args.restore_file[:-3]}_epoch{epoch}',
-      suffix)
-
-  os.makedirs(exp_dir, exist_ok=True)
-
   # save eval config
-  with open(os.path.join(exp_dir, 'eval_opt.json'), 'w') as fp:
+  with open(os.path.join(save_dir, 'eval_opt.json'), 'w') as fp:
     json.dump(cfg,
               fp,
               indent=2,
               sort_keys=True)
 
-  # set loggers 
-  logpath = os.path.join(exp_dir, 'logFile.log')
-  utils.set_logger(logpath)
-
   # run
-  mean_metrics = evaluate(
-      trainer,
-      val_loader if args.val_only else test_loader,
-      vis_data,
-      epoch=epoch,
-      vis_dir=os.path.join(exp_dir,'figs'),
-      display=True,
-      calc_metrics=True,
-      save=True,
-      save_dir=exp_dir,
-      )
+  if args.mesh_predictor_only:
+    mean_metrics = evaluate_mesh_predictor(
+        trainer,
+        val_loader if args.val_only else test_loader,
+        vis_data,
+        epoch=epoch,
+        method_name=cfg['model'],
+        display=True,
+        save=False,
+        save_dir=save_dir,
+        vis_dir=os.path.join(save_dir,'figs'),
+        )
+  else:
+    mean_metrics = evaluate(
+        trainer,
+        val_loader if args.val_only else test_loader,
+        vis_data,
+        epoch=epoch,
+        calc_metrics=True,
+        display=True,
+        save=False,
+        save_dir=save_dir,
+        vis_dir=os.path.join(save_dir,'figs'),
+        )
 
   # logging metrics
   logging.info(F'========== {"evaluating" if args.val_only else "testing" } =========')
@@ -243,6 +330,6 @@ if __name__ == '__main__':
   # save metrics
   utils.save_dict_to_json(
       mean_metrics,
-      os.path.join(exp_dir, "mean_metrics.json"),
+      os.path.join(save_dir, "mean_metrics.json"),
       )
 
