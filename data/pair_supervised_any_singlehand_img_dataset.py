@@ -115,9 +115,9 @@ class PairSupAnyShImgDataset(SupervisedShImgDataset):
     if random.random() < self.s_u_pick_ratio:
       frames = video.get_nearest_supervised_frames(
           frame + gap if first_next else frame - gap,
-          n=1,
+          n=3,
           )
-      return frames[0], 1
+      return random.sample(frames, 1)[0], 1
     else:
       return self.pass_unsupervised_frame(
           video,
