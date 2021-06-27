@@ -300,7 +300,7 @@ class PairFlowTrainer(BaseTrainer):
               )
 
     ### flow loss on supervised items ###
-    if 'flow_s' in loss_types:
+    if 'flow_s' in loss_types and step_mode~="infer":
       assert self.loss_cfg.get('flow_s', False), 'Expected flow_s loss config'
       if 'ordinary' in self.loss_cfg.flow_s:
         loss_list.append(
