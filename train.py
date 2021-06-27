@@ -18,6 +18,7 @@ from torch.nn.utils import clip_grad_norm_
 
 import utils
 import builder
+from evaluate import evaluate
 
 
 parser = argparse.ArgumentParser(
@@ -28,8 +29,6 @@ parser.add_argument('--exp_dir', default='exp_dir/config.json', help="Experiment
 parser.add_argument('--restore_file', default=None, help="Weights to reload before training")
 parser.add_argument('--allow_partial', dest='allow_partial', action='store_true')
 parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
-parser.add_argument('--eval_only', dest='eval_only', action='store_true')
-parser.add_argument('--test_only', dest='test_only', action='store_true')
 
 
 def restore_metrics(exp_dir):
@@ -97,62 +96,6 @@ def train(
     logging.info(
         "- Train metrics: \n" + "::".join(F"{k}: {v:03.5f}" for k, v in metrics_mean.items())
         )
-
-    return metrics_mean
-
-
-
-def evaluate(
-    trainer,
-    val_loader,
-    vis_data,
-    epoch,
-    vis_dir=None,
-    display=False,
-    calc_metrics=False,
-    save=False,
-    save_dir=None,
-    ):
-    """
-      Args:
-    """
-    summary = []
-    dataloader = iter(val_loader)
-
-    # use tqdm for progress bar
-    with tqdm(total=len(dataloader)) as t:
-      for i in range(len(dataloader)):
-
-        batch_samples = next(dataloader)
-
-        eval_metrics = trainer.eval_step(
-            batch_samples,
-            vis_dir=vis_dir,
-            display=display and i==0,
-            calc_metrics=calc_metrics,
-            )
-
-        summary.append(eval_metrics)
-
-        # update tqdm postfix
-        t.set_postfix(Epoch=epoch+1, Iter=i+1, loss=eval_metrics['loss'])
-        t.update()
-
-    # metrics mean
-    metrics_mean = trainer._metric_mean(summary)
-    logging.info(
-        "- Eval metrics:\n" + " :: ".join(F"{k}: {v:03.5f}" for k, v in metrics_mean.items())
-        )
-
-    if display:
-      trainer.visualize_step(
-          vis_data,
-          vis_dir=os.path.join(vis_dir, 'vis_data'),
-          )
-
-    if save:
-      with open(os.path.join(save_dir, 'summary.pkl'), 'wb') as fp:
-        pickle.dump(summary, fp)
 
     return metrics_mean
 
@@ -312,9 +255,8 @@ if __name__ == '__main__':
   assert os.path.isfile(json_path), f'Not a json configuration file found at "{json_path}"!'
 
   cfg = utils.get_config(json_path)
-  if not (args.eval_only or args.test_only):
-    with open(os.path.join(args.exp_dir, 'opt.json'), 'w') as fp:
-      json.dump(cfg, fp, indent=2, sort_keys=True)
+  with open(os.path.join(args.exp_dir, 'opt.json'), 'w') as fp:
+    json.dump(cfg, fp, indent=2, sort_keys=True)
 
   # log file
   exp_dir = os.path.join(args.exp_dir,'run')
@@ -333,65 +275,43 @@ if __name__ == '__main__':
 
   ### data loaders ###
   mean_std_loader=None
-  if not (args.eval_only or args.test_only):
-    train_loader = builder.get_dataloaders(
-        cfg['training'].dataloader,
-        data_cfg=cfg['data_spec'],
-        augmentation_cfg=cfg['augmentation'],
-        training=True,
-        shuffle=True,
-        )
+  train_loader = builder.get_dataloaders(
+      cfg['training'].dataloader,
+      data_cfg=cfg['data_spec'],
+      augmentation_cfg=cfg['augmentation'],
+      training=True,
+      shuffle=True,
+      )
 
-    if cfg['training'].get('calc_mean_std',False):
-      mean_std_loader = builder.get_dataloaders(
-        cfg['training'].dataloader,
-        data_cfg=cfg['data_spec'],
-        augmentation_cfg={},
-        training=True,
-        shuffle=False,
-        )
-      mean_std_loader.dataset.do_augment = False
-      mean_std_loader.dataset.labelset = ['verts3d','verts3d_rel', 'joints3d_rel']
-
-
-  if not args.test_only:
-    vis_loader = builder.get_dataloaders(
-        cfg['evaluating'].dataloader,
-        data_cfg=cfg['data_spec'],
-        augmentation_cfg={},
-        training=False,
-        shuffle=True,
-        )
-    vis_data = next(iter(vis_loader))
-    vis_loader = None
-
-    val_loader = builder.get_dataloaders(
-        cfg['evaluating'].dataloader,
-        data_cfg=cfg['data_spec'],
-        augmentation_cfg={},
-        training=False,
-        shuffle=False,
-        )
+  if cfg['training'].get('calc_mean_std',False):
+    mean_std_loader = builder.get_dataloaders(
+      cfg['training'].dataloader,
+      data_cfg=cfg['data_spec'],
+      augmentation_cfg={},
+      training=True,
+      shuffle=False,
+      )
+    mean_std_loader.dataset.do_augment = False
+    mean_std_loader.dataset.labelset = ['verts3d','verts3d_rel', 'joints3d_rel']
 
 
-  if args.test_only:
-    vis_loader = builder.get_dataloaders(
-        cfg['testing'].dataloader,
-        data_cfg=cfg['data_spec'],
-        augmentation_cfg={},
-        training=False,
-        shuffle=True,
-        )
-    vis_data = next(iter(vis_loader))
-    vis_loader = None
+  vis_loader = builder.get_dataloaders(
+      cfg['evaluating'].dataloader,
+      data_cfg=cfg['data_spec'],
+      augmentation_cfg={},
+      training=False,
+      shuffle=True,
+      )
+  vis_data = next(iter(vis_loader))
+  vis_loader = None
 
-    test_loader = builder.get_dataloaders(
-        cfg['testing'].dataloader,
-        data_cfg=cfg['data_spec'],
-        augmentation_cfg={},
-        training=False,
-        shuffle=False,
-        )
+  val_loader = builder.get_dataloaders(
+      cfg['evaluating'].dataloader,
+      data_cfg=cfg['data_spec'],
+      augmentation_cfg={},
+      training=False,
+      shuffle=False,
+      )
 
 
   ### model ###
@@ -444,99 +364,43 @@ if __name__ == '__main__':
       device,
       exp_dir,
       mean_std_loader=mean_std_loader,
-      **side_fns(val_loader if not args.test_only else test_loader),
+      **side_fns(val_loader),
       )
-
-  ######## validate or test ##########
-  if args.eval_only or args.test_only:
-
-    epoch = trainer.restore_model(
-        args.restore_file,
-        allow_partial=args.allow_partial,
-        )
-
-
-    suffix = utils.get_spec_name(
-        cfg[f'{"testing" if args.test_only else "evaluating"}'].dataloader
-        )
-
-    exp_dir = os.path.join(
-        exp_dir,
-        f'{"eval_on_" if args.eval_only else "test_on_"}_{args.restore_file[:-3]}_epoch{epoch}',
-        suffix)
-
-    os.makedirs(exp_dir, exist_ok=True)
-
-    # save eval config
-    with open(os.path.join(exp_dir, 'eval_opt.json'), 'w') as fp:
-      json.dump(cfg,
-                fp,
-                indent=2,
-                sort_keys=True)
-
-    # set loggers 
-    logpath = os.path.join(exp_dir, 'logFile.log')
-    utils.set_logger(logpath)
-
-    # run
-    mean_metrics = evaluate(
-        trainer,
-        val_loader if args.eval_only else test_loader,
-        vis_data,
-        epoch=epoch,
-        vis_dir=os.path.join(exp_dir,'figs'),
-        display=True,
-        calc_metrics=True,
-        save=True,
-        save_dir=exp_dir,
-        )
-
-    # logging metrics
-    logging.info(F'========== {"evaling" if args.eval_only else "testing" } =========')
-    logging.info(F'========== @ "{args.restore_file}" ==========')
-    logging.info("- metrics: " + " ; ".join(F"{k}: {v:05.3f}" for k, v in mean_metrics.items()))
-
-    # save metrics
-    utils.save_dict_to_json(
-        mean_metrics,
-        os.path.join(exp_dir, "mean_metrics.json"),
-        )
 
 
   #### training  ####
-  else:
 
-    # set loggers & writers
-    logging.info('======== Training ========')
-    writer = SummaryWriter(exp_dir, max_queue=100)
-    logging.info(exp_dir)
+  # set loggers & writers
+  logging.info('======== Training ========')
+  writer = SummaryWriter(exp_dir, max_queue=100)
+  logging.info(exp_dir)
 
-    # run
-    best_metrics = train_evaluate(
-        trainer,
-        train_loader,
-        val_loader,
-        vis_data,
-        metrics_ops,
-        writer,
-        num_epochs=cfg['training'].get('num_epochs',100),
-        eval_freq=cfg['training'].get('eval_freq', 1),
-        vis_freq=cfg['training'].get('vis_freq', 8),
-        backup_freq=cfg['training'].get('backup_freq', 8),
-        restore_file=args.restore_file,
-        allow_partial=args.allow_partial,
+  # run
+  best_metrics = train_evaluate(
+      trainer,
+      train_loader,
+      val_loader,
+      vis_data,
+      metrics_ops,
+      writer,
+      num_epochs=cfg['training'].get('num_epochs',100),
+      eval_freq=cfg['training'].get('eval_freq', 1),
+      vis_freq=cfg['training'].get('vis_freq', 8),
+      backup_freq=cfg['training'].get('backup_freq', 8),
+      restore_file=args.restore_file,
+      allow_partial=args.allow_partial,
+      )
+
+  # logging metrics
+  logging.info("Final Mean Metrics")
+  for metric in best_metrics:
+    logging.info(f"best metrics for {metric}:")
+    logging.info(
+        "-    metrics: \n" + " :: ".join(
+          f"{k}: {v:05.3f}" for k, v in best_metrics[metric].items()
+          )
         )
 
-    # logging metrics
-    logging.info("Final Mean Metrics")
-    for metric in best_metrics:
-      logging.info(f"best metrics for {metric}:")
-      logging.info(
-          "-    metrics: \n" + " :: ".join(
-            f"{k}: {v:05.3f}" for k, v in best_metrics[metric].items()
-            )
-          )
-
-    # save metrics
-    best_metrics_path = os.path.join(exp_dir, 'best_metrics.json')
-    utils.save_dict_to_json(best_metrics, best_metrics_path)
+  # save metrics
+  best_metrics_path = os.path.join(exp_dir, 'best_metrics.json')
+  utils.save_dict_to_json(best_metrics, best_metrics_path)
