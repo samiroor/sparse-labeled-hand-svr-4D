@@ -331,8 +331,8 @@ class PairFlowTrainer(BaseTrainer):
       assert self.loss_cfg.get('flow_s', False),'Expected flow loss config'
       loss_list.append(
           [
-            'flow_u',
-            'infer_ordinary',
+            'flow_infer_u',
+            'ordinary',
             unsupervised_batch,
             output_batch['flow']['infer_unsupervised'],
             self.loss_cfg.flow_s.ordinary,

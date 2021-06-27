@@ -69,7 +69,7 @@ class RotationTranslationVelocityField(nn.Module):
     else:
 
       self.fc_p = nn.Linear(in_dim, hidden_size)
-      self.fc_out = nn.Linear(hidden_size, out_dim)
+      self.fc_out = nn.Linear(hidden_size, self.quaternion_dim + self.linear_dim)
 
     # remperature_scaling
     self.temperature_scaling = nn.Parameter(torch.ones(in_dim, )) if temperature_scaling else 1.0
