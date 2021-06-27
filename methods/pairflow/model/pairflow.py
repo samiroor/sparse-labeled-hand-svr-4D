@@ -77,7 +77,7 @@ class PairFlow(nn.Module):
 
     self.morph_shape = morph_shape
     self.use_gt_mano_shape = use_gt_mano_shape
-    assert not all(morph_shape, use_gt_mano_shape),\
+    assert not all([morph_shape, use_gt_mano_shape]),\
         "Could not be applicable together!"
 
     self.invert_from_gts = invert_from_gts

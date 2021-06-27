@@ -28,7 +28,7 @@ parser.add_argument('--exp_dir', default='exp_dir/config.json', help="Experiment
 parser.add_argument('--restore_file', default=None, help="Weights to reload before training")
 parser.add_argument('--allow_partial', dest='allow_partial', action='store_true')
 parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
-parser.add_argument('--val_only', dest='val_only', action='store_false')
+parser.add_argument('--val_only', dest='val_only', action='store_true')
 parser.add_argument('--test_only', dest='test_only', action='store_true')
 
 parser.add_argument('--mesh_predictor_only', dest='mesh_predictor_only', action='store_true')
@@ -100,6 +100,7 @@ def evaluate_mesh_predictor(
     save=False,
     vis_dir=None,
     save_dir=None,
+    prefix='mesh_predictor',
     ):
 
 
@@ -112,9 +113,9 @@ def evaluate_mesh_predictor(
   dataloader = iter(val_loader)
 
   trainer.model.eval()
-  device = trainer.model.device
+  device = trainer.device
 
-  if model_name in ("pairflow", ):
+  if method_name in ("pairflow", ):
     mesh_predictor = trainer.model.module.mesh_predictor
   else:
     mesh_predictor = trainer.model
@@ -127,15 +128,21 @@ def evaluate_mesh_predictor(
       for k in batch_samples:
         batch_samples[k] = batch_samples[k].float().to(device)
 
-      output_batch =  mesh_predictor(batch_samples)
+      with torch.no_grad():
+        output_batch =  mesh_predictor(batch_samples)
 
       eval_metrics = trainer._metric_step(
           gt_dict=batch_samples,
           pred_dict=output_batch,
           )
 
-      summary.append(eval_metrics)
+      summary.append({f'{prefix}__' + k:v for k, v in eval_metrics.items()})
 
+      # update tqdm postfix
+      t.set_postfix(Epoch=epoch+1, Iter=i+1)
+      t.update()
+
+  # metrics mean
   metrics_mean = trainer._metric_mean(summary)
 
   if display:
@@ -183,8 +190,7 @@ if __name__ == '__main__':
 
   save_dir = os.path.join(
       exp_dir,
-      f'{"eval_on_" if args.val_only else "test_on_"}\
-          _{args.restore_file[:-3]}_epoch{epoch}',
+      f'{"eval_on_" if args.val_only else "test_on_"}_{args.restore_file[:-3]}',
       suffix)
 
   os.makedirs(save_dir, exist_ok=True)
@@ -279,7 +285,7 @@ if __name__ == '__main__':
       metrics_fns,
       device,
       exp_dir,
-      mean_std_loader=mean_std_loader,
+      mean_std_loader=None,
       **side_fns(val_loader if args.val_only else test_loader),
       )
 
@@ -303,7 +309,7 @@ if __name__ == '__main__':
         val_loader if args.val_only else test_loader,
         vis_data,
         epoch=epoch,
-        method_name=cfg['model'],
+        method_name=cfg['model'].name,
         display=True,
         save=False,
         save_dir=save_dir,
