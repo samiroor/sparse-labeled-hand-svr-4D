@@ -10,6 +10,14 @@
       "loss":"min"
     }
   },
+  "training":{
+    #"optimizer_kwargs":{
+    #  "weight_decay":0.0,
+    #  "mesh_predictor_lr":5e-5,
+    #  "context_head_lr":5e-5,
+    #  "velocity_field_lr":5e-5
+    #}
+  },
   "model":{
     "name":"pairflow",
     "pairflow":{
