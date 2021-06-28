@@ -46,12 +46,15 @@ class OPContextHead(ContextHead):
     f1 = self.context_base(f1)
     f2 = self.context_base(f2)
 
-    if op == 'subtract':
+    if self.op == 'subtract':
       return self.context_head(f1 - f2)
 
-    elif op == 'cat':
+    elif self.op == "spatial_subtract":
+      return self.to_vector(self.context_head(f1-f2))
+
+    elif self.op == 'cat':
       return self.context_head(torch.cat([f1, f2], dim=-1))
 
-    elif op in ('cross_attention', ):
+    elif self.op in ('cross_attention', ):
       assert len(f1.shape)==4 and len(f2.shape)==4, "Expected spatial features!"
       return self.to_vector( self.context_head(f1, f2) )

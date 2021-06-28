@@ -159,7 +159,7 @@ def get_model(
       if context_base is not  None else None
   _context_head = context_head_dict[context_head](**context_head_kwargs)\
       if context_head is not None else None
-  contetx_head = OPContextHead(
+  context_head = OPContextHead(
       context_base=_context_base,
       context_head=_context_head,
       op=cfg['context'].get('op', 'subtract'),
