@@ -72,6 +72,8 @@ class PairFlow(nn.Module):
       self.feature_key = Fls.tail_features
     elif feature_key == "encoder_tail_features":
       self.feature_key = Fls.encoder_tail_features
+    elif feature_key == "encoder_spatial_features":
+      self.feature_key = Fls.encoder_spatial_features
     else:
       self.feature_key = Fls.encoder_features
 

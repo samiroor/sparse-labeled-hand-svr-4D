@@ -55,6 +55,24 @@ class OPContextHead(ContextHead):
     elif self.op == 'cat':
       return self.context_head(torch.cat([f1, f2], dim=-1))
 
+    elif self.op == 'scaled_dot_product':
+      b, c, u, v = f1.shape #q
+      _, _, h, w = f2.shape #k
+      scale = c ** -0.5
+
+      f1, f2 = map(lambda t: rearrange(t, 'b c x y -> b x y c'), (f1, f2))
+      sim = einsum('b u v c, b h w c -> b u v h w', f1, f2) * scale
+      sim = rearrange(sim, 'b u v h w -> b u v (h w)')
+      attn = sim.softmax(dim=-1)
+
+      attn = rearrange(attn, 'b u v (h w) -> b u v h w', h=h)
+      out =  einsum('b u v h w, b d h w -> b d u v', attn, f2)
+
+      return self.to_vector(self.context_head(out))
+
     elif self.op in ('cross_attention', ):
       assert len(f1.shape)==4 and len(f2.shape)==4, "Expected spatial features!"
       return self.to_vector( self.context_head(f1, f2) )
+
+    else:
+      raise NotImplementedError()

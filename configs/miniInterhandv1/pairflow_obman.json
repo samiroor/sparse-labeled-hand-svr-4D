@@ -49,7 +49,8 @@
        #   "activation":"relu",
        #   "dropout":0.0,
        #   "flatten":false
-       # }
+       # },
+       "op":"subtract"
       },
       "velocity_field":"rotation_translation",
       "velocity_field_kwargs":{
