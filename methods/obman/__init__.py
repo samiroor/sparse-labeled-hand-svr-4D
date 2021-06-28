@@ -221,6 +221,7 @@ def get_model(
           'shape_head': model.shape_head,
           'st_head':model.st_head,
           'obj_st_head':model.obj_st_head,
+          'attention_head':model.attention_head,
           }
 
       for module_name in freeze:
