@@ -9,8 +9,8 @@ class RotationTranslationFlow(nn.Module):
   def __init__(
       self,
       velocity_field,
-      return_multiTime=False,
       T=1,
+      return_multiTime=False,
       **kwargs,
       ):
 

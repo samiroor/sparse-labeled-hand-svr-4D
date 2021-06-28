@@ -63,10 +63,10 @@ def get_model(
     ):
 
   # shortcuts
-  morph_key = cfg.get('morph_key', 'verts3d')
+  morph_key = cfg.get('morph_key', 'mano_params')
   morph_shape = cfg.get('morph_shape', False)
-  use_gt_mano_shape = cfg.get('use_gt_mano_shape', False)
-  invert_from_gts = cfg.get('invert_from_gts', False)
+  use_gt_mano_shape = cfg.get('use_gt_mano_shape', True)
+  invert_from_gts = cfg.get('invert_from_gts', True)
   infer_from_gts = cfg.get('infer_from_gts', True)
 
   use_tail_features = cfg.get('use_tail_features', False)
@@ -124,29 +124,26 @@ def get_model(
 
 
   # flow velocity field
-  velocity_field = cfg.get('velocity_field', 'resblock')
+  velocity_field = cfg.get('velocity_field', 'rotation_translation')
   velocity_field_kwargs = cfg.get('velocity_field_kwargs', {
-    'in_dim':3,
-    'out_dim':3,
-    'c_dim':c_dim,
-    'hidden_size':c_dim,
-    'activation':'tanh',
-    'n_blocks':3,
-    'cond_mode':'add',
-    'use_positional_encoding':False,
-    'positional_encoding_kwargs':{
-      'linear':True,
-      'length':16,
-      }
+    "in_dim":51,
+    "angular_dim":48,
+    "c_dim":512,
+    "hidden_size":512,
+    "n_blocks":1,
+    "cond_mode":"cat",
+    "activation":"tanh",
+    "rot_mode":"axisang",
+    "disentangle":False,
+    "temperature_scaling":True,
+    #"positional_encoding":False,
+    #"positional_encoding_kwargs":{},
     })
 
-  flow = cfg.get('flow', 'resflow')
+  flow = cfg.get('flow', 'rotation_translation')
   flow_kwargs = cfg.get('flow_kwargs', {
-    'T':3,
-    'displacement':0.3,
-    'return_multiTime':False,
-    'return_weighted_avg':False,
-    'gamma':0.4,
+    "T":1,
+    "return_multiTime":False,
     })
 
   # build components

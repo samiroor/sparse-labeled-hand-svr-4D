@@ -13,55 +13,70 @@
   "model":{
     "name":"pairflow",
     "pairflow":{
-      "morph_key":"verts3d",
-      "use_tail_features":false,
+      "pretrained_file":null,
+      #"morph_key":"verts3d",
+      "morph_key":"mano_params",
       "morph_shape":false,
-      "invert_from_gts":false,
+      "use_gt_mano_shape":true,
+      "invert_from_gts":true,
       "infer_from_gts":true,
-      "context_base":"fcs",
-      "context_base_kwargs":{
-        "ch_in":512, #"feature_dim",
-        "ch_hiddens":[512],
-        "ch_out":512,
-        "activation":"relu",
-        "dropout":0.0,
-        "flatten":false
+      "use_tail_features":false,
+      "use_encoder_tail_features":false,
+      "use_encoder_spatial_features":false,
+      "context":{
+        "context_base":"fcs",
+        "context_base_kwargs":{
+          "ch_in":512, #"mesh predictor out feature_dim",
+          "ch_hiddens":[512],
+          "ch_out":512,
+          "activation":"relu",
+          "dropout":0.0,
+          "flatten":false
+        },
+        "context_head":null,
+       # "context_head_kwargs":{
+       #   "ch_in":512, #"context_base out feature_dim",
+       #   "ch_hiddens":[512],
+       #   "ch_out":512,
+       #   "activation":"relu",
+       #   "dropout":0.0,
+       #   "flatten":false
+       # }
       },
-      "context_head":"subtract",
-      "context_head_kwargs":{},
-      "velocity_field":"resblock",
+      "velocity_field":"rotation_translation",
       "velocity_field_kwargs":{
-        "c_dim":512, #"feature_dim", #out of context head
+        "in_dim":51,
+        "angular_dim":48,
+        "c_dim":512,
         "hidden_size":512,
+        "n_blocks":1,
+        "cond_mode":"cat",
         "activation":"tanh",
-        "n_blocks":3,
-        "cond_mode":"add",
-        "use_positional_encoding":false,
-        "positional_encoding_kwargs":{
-          "linear":true,
-          "length":16
-        }
+        "rot_mode":"axisang",
+        "disentangle":false,
+        "temperature_scaling":true
       },
-      "flow":"resflow",
+      "flow":"rotation_translation",
       "flow_kwargs":{
-        "T":3,
-        "displacement":0.3,
-        "return_multiTime":false,
-        "return_weighted_avg":false,
-        "gamma":0.4
+        "T":1,
+        "return_multiTime":false
       },
       "mesh_predictor":"obman",
       "mesh_predictor_kwargs":{
         "pretrained_file":null,
-        "freeze":{},
+        "freeze":{
+          "whole":false
+        },
         "c_dim":512,
         "h_dim":512,
-        "scale_factor":0.0001, 
-        "trans_factor":100,    
-        "off_z":1.0,          
+        "scale_factor":0.0001,
+        "trans_factor":100,
+        "off_z":1.0,
         "return_tail_features":false,
+        "return_encoder_tail_features":false,
         "return_encoder_features":true,
         "return_encoder_spatial_features":false,
+        "adaptor_path":null,
         "ncomps":15,
         "use_pca":true,
         "use_shape":true,
@@ -69,6 +84,12 @@
         "center_idx":0,
         "annot_metric":"m",
         "encoder":"resnet18",
+        "encoder_kwargs":{
+          "c_dim":512, #reduced feat out_dim
+          "use_linear":false, #put an extra fc
+          "return_spatial_features":false,
+          "return_layer":"layer4"
+        },
         "mano_base":"fcs",
         "mano_base_kwargs":{
           "ch_in":512, #c_dim,
@@ -79,7 +100,8 @@
           "flatten":false
         },
         "st_head":"fcs",
-        "obj_st_head":null
+        "obj_st_head":null,
+        "attention_head":null
       },
       "loss":{
         #"loss_types":["mesh_predictor_s", "mesh_predictor_u", "flow_s", "flow_u"],
