@@ -1,5 +1,7 @@
+from einops import rearrange
+
 import torch
-import torch.nn as nn
+from torch import nn, einsum
 
 
 class ContextHead(nn.Module):
