@@ -29,7 +29,7 @@ parser.add_argument('--exp_dir', default='exp_dir/config.json', help="Experiment
 parser.add_argument('--restore_file', default=None, help="Weights to reload before training")
 parser.add_argument('--allow_partial', dest='allow_partial', action='store_true')
 parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
-parser.add_argument('--num_epochs', default=10000)
+parser.add_argument('--num_epochs', default=10000, type=int)
 
 
 def restore_metrics(exp_dir):

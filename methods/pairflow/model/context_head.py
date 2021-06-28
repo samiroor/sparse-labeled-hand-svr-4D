@@ -68,6 +68,8 @@ class OPContextHead(ContextHead):
       attn = sim.softmax(dim=-1)
 
       attn = rearrange(attn, 'b u v (h w) -> b u v h w', h=h)
+      f2 = rearrange(f2, 'b h w c -> b c h w')
+
       out =  einsum('b u v h w, b d h w -> b d u v', attn, f2)
 
       return self.to_vector(self.context_head(out))
