@@ -29,6 +29,7 @@ parser.add_argument('--exp_dir', default='exp_dir/config.json', help="Experiment
 parser.add_argument('--restore_file', default=None, help="Weights to reload before training")
 parser.add_argument('--allow_partial', dest='allow_partial', action='store_true')
 parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
+parser.add_argument('--num_epochs', default=10000)
 
 
 def restore_metrics(exp_dir):
@@ -383,7 +384,7 @@ if __name__ == '__main__':
       vis_data,
       metrics_ops,
       writer,
-      num_epochs=cfg['training'].get('num_epochs',100),
+      num_epochs=min(cfg['training'].get('num_epochs',100), args.num_epochs),
       eval_freq=cfg['training'].get('eval_freq', 1),
       vis_freq=cfg['training'].get('vis_freq', 8),
       backup_freq=cfg['training'].get('backup_freq', 8),
