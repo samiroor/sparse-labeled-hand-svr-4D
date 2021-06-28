@@ -3,7 +3,7 @@ import logging
 import torch
 import torch.nn as nn
 
-from methods.modelutils import layers
+from methods.modelutils import layers, attentions
 from methods.obman import get_model as obman_get_model
 from methods.graph import get_model as graph_get_model
 
@@ -13,7 +13,7 @@ from methods.pairflow.model.rotation_translation_flow import RotationTranslation
 from methods.pairflow.model.velocity_field import VelocityField
 from methods.pairflow.model.rotation_translation_velocity_field import RotationTranslationVelocityField
 
-from methods.pairflow.model.context_head import SubtractContextHead
+from methods.pairflow.model.context_head import OPContextHead
 
 from methods.pairflow.model.pairflow import PairFlow
 from methods.pairflow.trainer import PairFlowTrainer
@@ -37,7 +37,8 @@ context_base_dict = {
 
 
 context_head_dict = {
-    'subtract': SubtractContextHead,
+    'fcs': layers.fcs,
+    'cross_attention': attentions.MultiHeadCrossAttention,
     }
 
 
@@ -70,29 +71,39 @@ def get_model(
 
   use_tail_features = cfg.get('use_tail_features', False)
   use_encoder_tail_features = cfg.get('use_encoder_tail_features', False)
+  use_encoder_spatial_features = cfg.get('use_encoder_spatial_features', False)
 
 
   # mesh predictor
   mesh_predictor = cfg.get('mesh_predictor', 'obman')
   mesh_predictor_kwargs = cfg.mesh_predictor_kwargs
   assert bool(mesh_predictor_kwargs), "Expected a config for mesh_predictor!"
+
+  # which image features
   if use_tail_features:
     assert mesh_predictor_kwargs.return_tail_features
     c_dim = mesh_predictor_kwargs.h_dim
     feature_key = 'tail_features'
+
   elif use_encoder_tail_features:
     assert mesh_predictor_kwargs.return_encoder_tail_features
     c_dim = mesh_predictor_kwargs.c_dim + mesh_predictor_kwargs.h_dim
     feature_key = 'encoder_tail_features'
+
+  elif use_encoder_spatial_features:
+    assert mesh_predictor_kwargs.return_encoder_spatial_features
+    c_dim = mesh_predictor_kwargs.c_dim
+    feature_key = 'encoder_spatial_features'
+
   else:
     assert mesh_predictor_kwargs.return_encoder_features
     c_dim = mesh_predictor_kwargs.c_dim
     feature_key = 'encoder_features'
 
-  # context 
-  context_base = cfg.get('context_base', 'fcs')
-  context_base_kwargs = cfg.get('context_base_kwargs', {
-    'ch_in':c_dim,
+  # context head
+  context_base = cfg['context'].get('context_base', 'fcs')
+  context_base_kwargs = cfg['context'].get('context_base_kwargs', {
+    'ch_in':c_dim, # should be equal to mesh predictor featur key out-channels
     'ch_out':c_dim,
     'ch_hiddens':[c_dim],
     'activation':'relu',
@@ -100,10 +111,19 @@ def get_model(
     'flatten':False,
     })
 
-  context_head = cfg.get('context_head', 'subtract')
-  context_head_kwargs = cfg.get('context_head_kwargs', {})
+  context_head = cfg['context'].get('context_head', None)
+  context_head_kwargs = cfg['context'].get('context_head_kwargs',{
+    "nheads":1,
+    "in_dim":c_dim,  # should be equal to context base out-chnannels feature
+    "key_dim":c_dim,  # could be changed (optionally)
+    "value_dim":c_dim, # should be equal to velocity field c_dim  features 
+    "qk_same_proj":True,
+    "positional_encoding":False,
+    "max_pos_size":100,
+    })
 
-  # flow
+
+  # flow velocity field
   velocity_field = cfg.get('velocity_field', 'resblock')
   velocity_field_kwargs = cfg.get('velocity_field_kwargs', {
     'in_dim':3,
@@ -129,18 +149,32 @@ def get_model(
     'gamma':0.4,
     })
 
-  # components
+  # build components
+  # mesh predictor
   mesh_predictor = mesh_predictor_dict[mesh_predictor](
       mesh_predictor_kwargs,
       device=device,
       )
 
-  context_base = context_base_dict[context_base](**context_base_kwargs) if context_base is not  None else None
-  context_head = context_head_dict[context_head](context_base, **context_head_kwargs)
 
+  # context_head
+  _context_base = context_base_dict[context_base](**context_base_kwargs)\
+      if context_base is not  None else None
+  _context_head = context_head_dict[context_head](**context_head_kwargs)\
+      if context_head is not None else None
+  contetx_head = OPContextHead(
+      context_base=_context_base,
+      context_head=_context_head,
+      op=cfg['context'].get('op', 'subtract'),
+      )
+
+  # make velocity field
   velocity_field = velocity_field_dict[velocity_field](**velocity_field_kwargs)
+
+  # make flow with that velocity field
   flow = flow_dict[flow](velocity_field, **flow_kwargs)
 
+  # make pairflow
   model = PairFlow(
       mesh_predictor=mesh_predictor,
       context_head=context_head,
@@ -154,8 +188,23 @@ def get_model(
       **kwargs,
       )
 
-  return  model
+  ### load pretrained ####
+  pretrained_file = cfg.get('pretrained_file', None)
 
+  if pretrained_file:
+    assert os.path.exists(pretrained_file), f'Expected file {pretrained_file} is not found'
+    ckpt_dict = torch.load(pretrained_file)['state_dict']
+    ckpt_dict = {k.split('module.')[-1]:v for k,v in ckpt_dict.items()}
+
+    model_dict = model.state_dict()
+    for k in model_dict:
+      if k not in ckpt_dict:
+        logging.warn("Missed pretrained weight: {}".format(k))
+    model_dict.update(ckpt_dict)
+    model.load_state_dict(model_dict)
+    logging.info(f'pretrained weight from {pretrained_file} is loaded.')
+
+  return  model
 
 
 #### optimizer ######
