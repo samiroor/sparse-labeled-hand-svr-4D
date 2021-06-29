@@ -68,11 +68,11 @@ class OPContextHead(ContextHead):
       attn = sim.softmax(dim=-1)
 
       attn = rearrange(attn, 'b u v (h w) -> b u v h w', h=h)
-      f2 = rearrange(f2, 'b h w c -> b c h w')
+
+      f1, f2 = map(lambda t: rearrange(t, 'b x y c -> b c x y'), (f1, f2))
 
       out =  einsum('b u v h w, b d h w -> b d u v', attn, f2)
-
-      return self.to_vector(self.context_head(out))
+      return self.to_vector(self.context_head(f1 - out))
 
     elif self.op in ('cross_attention', ):
       assert len(f1.shape)==4 and len(f2.shape)==4, "Expected spatial features!"
