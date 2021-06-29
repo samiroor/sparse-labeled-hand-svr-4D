@@ -57,22 +57,24 @@ class OPContextHead(ContextHead):
     elif self.op == 'cat':
       return self.context_head(torch.cat([f1, f2], dim=-1))
 
-    elif self.op == 'scaled_dot_product':
+    elif self.op in ('scaled_dot_product', 'nrm_scaled_dot_product'):
+      f1_, f2_ = f1, f2
       b, c, u, v = f1.shape #q
       _, _, h, w = f2.shape #k
       scale = c ** -0.5
+
+      if 'nrm' in self.op:
+        f1 = nn.functional.normalize(f1, dim=-1)
+        f2 = nn.functional.normalize(f2, dim=-1)
 
       f1, f2 = map(lambda t: rearrange(t, 'b c x y -> b x y c'), (f1, f2))
       sim = einsum('b u v c, b h w c -> b u v h w', f1, f2) * scale
       sim = rearrange(sim, 'b u v h w -> b u v (h w)')
       attn = sim.softmax(dim=-1)
-
       attn = rearrange(attn, 'b u v (h w) -> b u v h w', h=h)
 
-      f1, f2 = map(lambda t: rearrange(t, 'b x y c -> b c x y'), (f1, f2))
-
-      out =  einsum('b u v h w, b d h w -> b d u v', attn, f2)
-      return self.to_vector(self.context_head(f1 - out))
+      f1_align =  einsum('b u v h w, b d h w -> b d u v', attn, f2_)
+      return self.to_vector(self.context_head(f1_ - f1_align))
 
     elif self.op in ('cross_attention', ):
       assert len(f1.shape)==4 and len(f2.shape)==4, "Expected spatial features!"
