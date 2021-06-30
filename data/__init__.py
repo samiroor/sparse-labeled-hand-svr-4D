@@ -147,6 +147,7 @@ def get_dataset(
           augmentation=augmentation_cfg,
           training=training,
           gap=cfg.get('gap',1),
+          s_u_pick_ratio=cfg.get('s_u_pick_ratio', 0.5),
           **kwargs,
           )
     else:
