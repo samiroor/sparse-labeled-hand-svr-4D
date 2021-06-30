@@ -43,7 +43,7 @@ class PairSupAnyShImgDataset(SupervisedShImgDataset):
                      **kwargs)
 
     self.gap = gap
-    self.s_u_pick_ratio = 0.5
+    self.s_u_pick_ratio = kwargs.get('s_u_pick_ratio', 0.5)
 
   def __getitem__(self, item):
 
