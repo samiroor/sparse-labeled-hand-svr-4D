@@ -21,6 +21,7 @@ class RotationTranslationFlow(nn.Module):
     self.return_multiTime = return_multiTime
 
     self.rot_mode = velocity_field.rot_mode
+    self.linear_dim = velocity_field.linear_dim
     self.angular_dim = velocity_field.angular_dim
     self.quaternion_dim = velocity_field.quaternion_dim
 
@@ -38,7 +39,9 @@ class RotationTranslationFlow(nn.Module):
     xs = [x]
     for i in range(self.T):
       out_dict = self.velocity_field(xs[-1], cond)
-      r = out_dict['dy'][..., self.quaternion_dim:] / self.T + xs[-1][..., self.angular_dim:]
+
+      if self.linear_dim > 0:
+        r = out_dict['dy'][..., self.quaternion_dim:] / self.T + xs[-1][..., self.angular_dim:]
 
       if self.angular_dim > 0 :
         q = quaternion_multiply(
@@ -50,9 +53,14 @@ class RotationTranslationFlow(nn.Module):
         else:
           NotImplementedError()
 
+      if self.linear_dim > 0 and self.angular_dim > 0:
         y = torch.cat([theta, r], dim=-1)
-      else:
+      elif self.linear_dim > 0:
         y = r
+      elif self.angular_dim > 0:
+        y = theta
+      else:
+        raise ValueError()
 
       xs += [y]
     return torch.stack(xs)
