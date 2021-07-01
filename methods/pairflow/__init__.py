@@ -56,6 +56,73 @@ flow_dict = {
 
 #### model ######
 
+def get_context_head(cfg, c_dim=512):
+
+  context_base = cfg.get('context_base', 'fcs')
+  context_base_kwargs = cfg.get('context_base_kwargs', {
+    'ch_in':c_dim, # should be equal to mesh predictor featur key out-channels
+    'ch_out':c_dim,
+    'ch_hiddens':[c_dim],
+    'activation':'relu',
+    'dropout':0.0,
+    'flatten':False,
+    })
+
+  context_head = cfg.get('context_head', None)
+  context_head_kwargs = cfg.get('context_head_kwargs',{
+    "nheads":1,
+    "in_dim":c_dim,  # should be equal to context base out-chnannels feature
+    "key_dim":c_dim,  # could be changed (optionally)
+    "value_dim":c_dim, # should be equal to velocity field c_dim  features 
+    "qk_same_proj":True,
+    "positional_encoding":False,
+    "max_pos_size":100,
+    })
+
+  _context_base = context_base_dict[context_base](**context_base_kwargs)\
+      if context_base is not  None else None
+  _context_head = context_head_dict[context_head](**context_head_kwargs)\
+      if context_head is not None else None
+
+  context_head = OPContextHead(
+      context_base=_context_base,
+      context_head=_context_head,
+      op=cfg.get('op', 'subtract'),
+      )
+
+  return context_head
+
+
+def get_velocity_field(cfg):
+  velocity_field = cfg.get('velocity_field', 'rotation_translation')
+  velocity_field_kwargs = cfg.get('velocity_field_kwargs', {
+    "in_dim":51,
+    "angular_dim":48,
+    "c_dim":512,
+    "hidden_size":512,
+    "n_blocks":1,
+    "cond_mode":"cat",
+    "activation":"tanh",
+    "rot_mode":"axisang",
+    "disentangle":False,
+    "temperature_scaling":True,
+    #"positional_encoding":False,
+    #"positional_encoding_kwargs":{},
+    })
+
+  return velocity_field_dict[velocity_field](**velocity_field_kwargs)
+
+
+def get_flow(cfg, velocity_field):
+
+  flow = cfg.get('flow', 'rotation_translation')
+  flow_kwargs = cfg.get('flow_kwargs', {
+    "T":1,
+    "return_multiTime":False,
+    })
+
+  return flow_dict[flow](velocity_field, **flow_kwargs)
+
 
 def get_model(
     cfg,
@@ -101,76 +168,20 @@ def get_model(
     c_dim = mesh_predictor_kwargs.c_dim
     feature_key = 'encoder_features'
 
-  # context head
-  context_base = cfg['context'].get('context_base', 'fcs')
-  context_base_kwargs = cfg['context'].get('context_base_kwargs', {
-    'ch_in':c_dim, # should be equal to mesh predictor featur key out-channels
-    'ch_out':c_dim,
-    'ch_hiddens':[c_dim],
-    'activation':'relu',
-    'dropout':0.0,
-    'flatten':False,
-    })
-
-  context_head = cfg['context'].get('context_head', None)
-  context_head_kwargs = cfg['context'].get('context_head_kwargs',{
-    "nheads":1,
-    "in_dim":c_dim,  # should be equal to context base out-chnannels feature
-    "key_dim":c_dim,  # could be changed (optionally)
-    "value_dim":c_dim, # should be equal to velocity field c_dim  features 
-    "qk_same_proj":True,
-    "positional_encoding":False,
-    "max_pos_size":100,
-    })
-
-
-  # flow velocity field
-  velocity_field = cfg.get('velocity_field', 'rotation_translation')
-  velocity_field_kwargs = cfg.get('velocity_field_kwargs', {
-    "in_dim":51,
-    "angular_dim":48,
-    "c_dim":512,
-    "hidden_size":512,
-    "n_blocks":1,
-    "cond_mode":"cat",
-    "activation":"tanh",
-    "rot_mode":"axisang",
-    "disentangle":False,
-    "temperature_scaling":True,
-    #"positional_encoding":False,
-    #"positional_encoding_kwargs":{},
-    })
-
-  flow = cfg.get('flow', 'rotation_translation')
-  flow_kwargs = cfg.get('flow_kwargs', {
-    "T":1,
-    "return_multiTime":False,
-    })
-
-  # build components
   # mesh predictor
   mesh_predictor = mesh_predictor_dict[mesh_predictor](
       mesh_predictor_kwargs,
       device=device,
       )
 
+  # context head
+  context_head = get_context_head(cfg['context'], c_dim=c_dim)
 
-  # context_head
-  _context_base = context_base_dict[context_base](**context_base_kwargs)\
-      if context_base is not  None else None
-  _context_head = context_head_dict[context_head](**context_head_kwargs)\
-      if context_head is not None else None
-  context_head = OPContextHead(
-      context_base=_context_base,
-      context_head=_context_head,
-      op=cfg['context'].get('op', 'subtract'),
-      )
-
-  # make velocity field
-  velocity_field = velocity_field_dict[velocity_field](**velocity_field_kwargs)
+  # flow velocity field
+  velocity_field = get_velocity_field(cfg)
 
   # make flow with that velocity field
-  flow = flow_dict[flow](velocity_field, **flow_kwargs)
+  flow = get_flow(cfg, velocity_field)
 
   # make pairflow
   model = PairFlow(
