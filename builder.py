@@ -18,13 +18,14 @@ import data
 import metrics
 import utils
 
-from methods import obman, graph, pairflow
+from methods import obman, graph, pairflow, pair_disentangle_flow
 
 
 method_dict = {
     'obman':obman,
     'graph':graph,
-    'pairflow':pairflow
+    'pairflow':pairflow,
+    'pair_disentangle_flow':pair_disentangle_flow,
     }
 
 scheduler_dict = {
