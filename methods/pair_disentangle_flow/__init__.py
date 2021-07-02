@@ -138,6 +138,10 @@ def get_model(
   invert_from_gts = cfg.get('invert_from_gts', True)
   infer_from_gts = cfg.get('infer_from_gts', True)
 
+  # feture keys
+  feature_key_root = cfg.get('feature_key_root', 'encoder_features')
+  feature_key_rel = cfg.get('feature_key_rel', 'tail_features')
+
   # mesh predictor
   mesh_predictor = cfg.get('mesh_predictor', 'obman')
   mesh_predictor_kwargs = cfg.mesh_predictor_kwargs
@@ -172,8 +176,8 @@ def get_model(
       flow_root=flow_root,
       flow_rel=flow_rel,
       morph_key=morph_key,
-      feature_key_root="encoder_features",
-      feature_key_rel="tail_features",
+      feature_key_root=feature_key_root,
+      feature_key_rel=feature_key_rel,
       morph_shape=morph_shape,
       use_gt_mano_shape=use_gt_mano_shape,
       invert_from_gts=invert_from_gts,

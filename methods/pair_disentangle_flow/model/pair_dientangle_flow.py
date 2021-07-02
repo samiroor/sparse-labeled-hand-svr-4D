@@ -4,6 +4,24 @@ import torch.nn as nn
 
 from data import Fields as Fls
 
+def get_key(key):
+  if key == "verts3d":
+    return Fls.verts3d
+  elif key =="verts3d_rel":
+    return Fls.verts3d_rel
+  elif key == "mano_params":
+    return Fls.mano_params
+  elif key == "encoder_features":
+    return Fls.encoder_features
+  elif key == "tail_features":
+    return Fls.tail_features
+  elif key == "encoder_spatial_features":
+    return Fls.encoder_spatial_features
+  elif  key == "encoder_tail_features":
+    return Fls.encoder_tail_features
+  else:
+    raise NotImplementedError()
+
 
 class PairDistFlow(nn.Module):
 
@@ -34,17 +52,9 @@ class PairDistFlow(nn.Module):
     self.flow_root = flow_root
     self.flow_rel = flow_rel
 
-    if morph_key == "verts3d":
-      self.morph_key = Fls.verts3d
-    elif morph_key =="verts3d_rel":
-      self.morph_key = Fls.verts3d_rel
-    elif morph_key == "mano_params":
-      self.morph_key = Fls.mano_params
-    else:
-      raise NotImplementedError()
-
-    self.feature_key_root = Fls.encoder_features
-    self.feature_key_rel = Fls.tail_features
+    self.morph_key = get_key(morph_key)
+    self.feature_key_root = get_key(feature_key_root)
+    self.feature_key_rel = get_key(feature_key_rel)
 
     self.morph_shape = morph_shape
     self.use_gt_mano_shape = use_gt_mano_shape
