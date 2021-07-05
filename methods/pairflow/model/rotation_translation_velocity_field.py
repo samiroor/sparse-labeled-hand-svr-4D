@@ -27,6 +27,7 @@ class RotationTranslationVelocityField(nn.Module):
       ):
 
     super().__init__()
+    self.register_buffer('rot_const', torch.tensor([1e-6, 0.0, 0.0, 0.0]).unsqueeze(0))
     self.in_dim = in_dim
 
     self.linear_dim = in_dim - angular_dim
@@ -142,11 +143,17 @@ class RotationTranslationVelocityField(nn.Module):
 
     # normalize Dquaternions
     if self.angular_dim > 0:
+      # make all q0 > 0
+      out_a = standardize_quaternion(out_a.contiguous().view(-1, 4))
+      # make sure we do not have [0, 0, 0, 0] as a q
+      out_a = out_a + self.rot_const
+      # normalize q
       out_a = nn.functional.normalize(
-        out_a.contiguous().view(-1, 4),
+        out_a,
+        p=2,
         dim=-1
         )
-      out_a = standardize_quaternion(out_a).contiguous().view(batch_size, N, -1)
+      out_a = out_a.contiguous().view(batch_size, N, -1)
 
     # outputs
     if self.angular_dim > 0 and self.linear_dim > 0:
