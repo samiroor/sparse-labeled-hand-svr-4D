@@ -229,10 +229,9 @@ class PairDistFlow(nn.Module):
         if gt_mano_shape is not None:
           shape = gt_mano_shape
 
-      morphed_pose = (morphed_points[..., :-13] if self.morph_shape else morphed_points[..., :-3]).squeeze()
-      morphed_shape = morphed_points[..., -13:-3].squeeze() if self.morph_shape else shape[None].repeat(T, 1, 1).view(morphed_points.shape[0], 10)
-      morphed_root = morphed_points[..., -3:].squeeze()
-
+      morphed_pose = morphed_points[..., :-13].squeeze(1) if self.morph_shape else morphed_points[..., :-3].squeeze(1)
+      morphed_shape = morphed_points[..., -13:-3].squeeze(1) if self.morph_shape else shape[None].repeat(T, 1, 1).view(morphed_points.shape[0], 10)
+      morphed_root = morphed_points[..., -3:].squeeze(1)
       if morphed_pose.shape[-1] == self.mesh_predictor.manolayer.ncomps+3:
         verts3d_rel, joints3d_rel = self.mesh_predictor.manolayer(
             th_pose_coeffs=morphed_pose,
