@@ -22,7 +22,7 @@ def get_hand2d_error(
     eval_xy.feed(xy, vis, xy_pred)
 
   start, end, steps = 0., 100.0, 100
-  epe_mean, epe_median, auc, pck, thresh, _ = eval_xy.get_measures(start, end, steps)
+  _, epe_mean, epe_median, auc, pck, thresh, _ = eval_xy.get_measures(start, end, steps)
 
   return {
       "joints2d_epe_mean_px": epe_mean,

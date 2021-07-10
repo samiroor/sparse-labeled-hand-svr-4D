@@ -113,6 +113,7 @@ def xyz_error(
     ref_bone=[8,9],
     num_kp=21,
     report_pck=False,
+    report_error_list=False,
     ):
 
   # to show error in "mm"
@@ -175,8 +176,10 @@ def xyz_error(
         eval_item.feed(xyz, vis, xyz_pred_aligned)
 
     # Get Statistics
-    mean3d, _, auc3d, pck, thresh, auc3d_sub = eval_item.get_measures(0.0, 50., 100)
+    mean3d_list, mean3d, _, auc3d, pck, thresh, auc3d_sub = eval_item.get_measures(0.0, 50., 100)
     #errors["metric"] = "mm"
+    if report_error_list:
+      errors['{}_mean3d_list'.format(item)] = mean3d_list
     errors['{}_mean3d'.format(item)] = mean3d
     errors['{}_auc3d_sub'.format(item)] = auc3d_sub
     errors['{}_auc3d'.format(item)] = auc3d
@@ -266,7 +269,7 @@ def mesh_error(
         f_score_aligned.append(la)
 
 
-    mean3d, _, auc3d, pck, thresh, _ = eval_item.get_measures(0.0, 50., 100)
+    mean3d_list, mean3d, _, auc3d, pck, thresh, _ = eval_item.get_measures(0.0, 50., 100)
     errors['mesh{}_mean3d'.format(item)] = mean3d
     errors['mesh{}_auc3d'.format(item)] = auc3d
     if report_pck:

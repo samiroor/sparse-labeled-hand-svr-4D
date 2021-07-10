@@ -86,6 +86,7 @@ class EvalUtil:
             auc /= norm_factor
             auc_all.append(auc)
 
+        epe_mean_list = epe_mean_all
         epe_mean_all = np.mean(np.array(epe_mean_all))
         epe_median_all = np.mean(np.array(epe_median_all))
         auc_all = np.mean(np.array(auc_all))
@@ -95,7 +96,7 @@ class EvalUtil:
         pck_curve_all_sub, threshs_sub = pck_curve_all[40:], thresholds[40:]
         auc_sub = calc_auc(threshs_sub, pck_curve_all_sub)
 
-        return epe_mean_all, epe_median_all, auc_all, pck_curve_all, thresholds, auc_sub
+        return epe_mean_list, epe_mean_all, epe_median_all, auc_all, pck_curve_all, thresholds, auc_sub
 
 def calc_auc(x, y):
     """
