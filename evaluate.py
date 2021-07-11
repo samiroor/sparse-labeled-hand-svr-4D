@@ -18,6 +18,7 @@ from torch.nn.utils import clip_grad_norm_
 
 import utils
 import builder
+import evaluate_modules
 
 
 parser = argparse.ArgumentParser(
@@ -29,11 +30,12 @@ parser.add_argument('--restore_file', default=None, help="Weights to reload befo
 parser.add_argument('--allow_partial', dest='allow_partial', action='store_true')
 parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
 parser.add_argument('--val_only', dest='val_only', action='store_true')
-parser.add_argument('--test_only', dest='test_only', action='store_true')
 
-parser.add_argument('--mesh_predictor_only', dest='mesh_predictor_only', action='store_true')
-
-
+parser.add_argument('--mesh_predictor', dest='mesh_predictor', action='store_true')
+parser.add_argument('--mesh_predictor_sampler', default='unsupervised')
+parser.add_argument('--flow_infer', dest='flow_infer', action='store_true')
+parser.add_argument('--flow_infer_sampler', default="unsupervised_supervised")
+parser.add_argument('--test_split', default='test')
 
 ### evaluate Model ###
 def evaluate(
@@ -89,82 +91,23 @@ def evaluate(
   return metrics_mean
 
 
-### evaluate Mesh predictor module ###
-def evaluate_mesh_predictor(
-    trainer,
-    val_loader,
-    vis_data,
-    epoch,
-    method_name='pairflow',
-    display=False,
-    save=False,
-    vis_dir=None,
-    save_dir=None,
-    prefix='mesh_predictor',
-    ):
+### set save_dir ###
+def get_save_dir(cfg, exp_dir, args):
+  suffix = utils.get_spec_name(cfg.dataloader)
+  if args.mesh_predictor:
+    suffix += '_eval_mesh_predictor'
+    suffix += f"_on_{args.mesh_predictor_sampler}_samples"
 
 
-  """
-    Evaluate mesh predictor module of different networks (models)!
-    data loader should pass individual samples.
-  """
-
-  summary = []
-  dataloader = iter(val_loader)
-
-  trainer.model.eval()
-  device = trainer.device
-
-  if method_name in ("pairflow", ):
-    mesh_predictor = trainer.model.module.mesh_predictor
+  elif args.flow_infer:
+    suffix += '_eval_flow_infer'
+    suffix += f"_on_{'unsupervised' if args.flow_infer_sampler == 'unsupervised_supervised' else ''}_samples"
   else:
-    mesh_predictor = trainer.model
+    suffix += '_eval_default'
 
-  with tqdm(total=len(dataloader)) as t:
-    for i in range(len(dataloader)):
-
-      batch_samples = next(dataloader)
-
-      for k in batch_samples:
-        batch_samples[k] = batch_samples[k].float().to(device)
-
-      with torch.no_grad():
-        output_batch =  mesh_predictor(batch_samples)
-
-      eval_metrics = trainer._metric_step(
-          gt_dict=batch_samples,
-          pred_dict=output_batch,
-          )
-
-      summary.append({f'{prefix}__' + k:v for k, v in eval_metrics.items()})
-
-      # update tqdm postfix
-      t.set_postfix(Epoch=epoch+1, Iter=i+1)
-      t.update()
-
-  # metrics mean
-  metrics_mean = trainer._metric_mean(summary)
-
-  if display:
-
-    for k in vis_data:
-      vis_data[k] = vis_data[k].float().to(device)
-    output_batch = mesh_predictor(vis_data)
-
-    trainer._visualize_step(
-        vis_data,
-        output_batch,
-        multiFrame=False,
-        display_render=True,
-        display_skeleton=True,
-        vis_dir=vis_dir,
-        )
-
-  if save:
-    with open(os.path.join(save_dir, 'summary.pkl'), 'wb') as fp:
-      pickle.dump(summary, fp)
-
-  return metrics_mean
+  save_dir = exp_dir + '_Setting_'+ suffix
+  os.makedirs(save_dir, exist_ok=True)
+  return save_dir
 
 
 
@@ -178,29 +121,33 @@ if __name__ == '__main__':
 
   cfg = utils.get_config(json_path)
 
-  # save_dir & log file
+  # set test_split
+  if 'dataloader' in cfg['testing']:
+    if 'datasets' in cfg['testing'].dataloader:
+      for k in cfg['testing']['dataloader'].datasets:
+        cfg['testing']['dataloader'].datasets[k]['split'] = args.test_split
+        print(f"test_split is '{args.test_split}' in {k} dataset")
+
+  # save_dir & log file (using cfg)
   exp_dir = os.path.join(args.exp_dir, 'run')
-
-  suffix = utils.get_spec_name(
-      cfg[f'{"testing" if args.test_only else "evaluating"}'].dataloader
-      )
-
-  if args.mesh_predictor_only:
-    suffix += '_meshPredictorOnly'
-
-  save_dir = os.path.join(
-      exp_dir,
-      f'{"eval_on_" if args.val_only else "test_on_"}_{args.restore_file[:-3]}',
-      suffix)
-
-  os.makedirs(save_dir, exist_ok=True)
-
-  logpath = os.path.join(save_dir, 'logFile.log')
-  utils.set_logger(logpath)
+  save_dir = get_save_dir(
+      cfg[f'{"evaluating" if args.val_only else "testing"}'],
+      os.path.join(
+        exp_dir,
+        f'{"eval_on_" if args.val_only else "test_on_"}ckpt_{args.restore_file[:-3]}'),
+      args)
+  utils.set_logger(os.path.join(save_dir, 'logFile.log'))
 
   # set device
   is_cuda = (torch.cuda.is_available() and not args.no_cuda)
   device = torch.device("cuda" if is_cuda else "cpu")
+  # save eval config
+  with open(os.path.join(save_dir, 'opt.json'), 'w') as fp:
+    json.dump(cfg,
+              fp,
+              indent=2,
+              sort_keys=True)
+
 
   # set seed
   seed = cfg.seed
@@ -227,9 +174,7 @@ if __name__ == '__main__':
         training=False,
         shuffle=False,
         )
-
-
-  if args.test_only:
+  else:
     vis_loader = builder.get_dataloaders(
         cfg['testing'].dataloader,
         data_cfg=cfg['data_spec'],
@@ -248,34 +193,26 @@ if __name__ == '__main__':
         shuffle=False,
         )
 
-
   ### model ###
   model = builder.get_model(
       cfg['model'],
       device=device,
       )
-
-
   # optimizer
   optimizer = None
   # scheduler
   scheduler = None
-
   ### metrics_fns ###
   metrics_fns = builder.get_metrics_fns(cfg['metrics'])
-
   # metrics operations
   metrics_ops = cfg['metrics'].get('ops', {'loss':'min'}).copy()
   for k,v in metrics_ops.items():
     metrics_ops[k] = min if v=="min" else max
-
-
   ### trainer object ###
   side_fns = lambda x: {
       'verts2joints_fn': x.dataset._verts2joints_fn,
       'mano_fn': x.dataset._mano_fn
       }
-
 
   trainer = builder.get_trainer(
       cfg['model'],
@@ -294,27 +231,40 @@ if __name__ == '__main__':
       args.restore_file,
       allow_partial=args.allow_partial,
       )
-
-  # save eval config
-  with open(os.path.join(save_dir, 'eval_opt.json'), 'w') as fp:
-    json.dump(cfg,
-              fp,
-              indent=2,
-              sort_keys=True)
-
-  # run
-  if args.mesh_predictor_only:
-    mean_metrics = evaluate_mesh_predictor(
-        trainer,
-        val_loader if args.val_only else test_loader,
-        vis_data,
-        epoch=epoch,
-        method_name=cfg['model'].name,
-        display=True,
-        save=False,
+  if args.mesh_predictor:
+    if cfg['model'].name in ('pairflow', 'pair_disentangle_flow', ):
+      model = trainer.model.module.mesh_predictor
+    elif cfg['model'].name in ('obman'):
+      model = trainer.model
+    else:
+      raise NotImplementedError
+    evaluate_modules.evaluate_mesh_predictor(
+        model=model,
+        device=trainer.device,
+        val_loader=val_loader if args.val_only else test_loader,
+        vis_data=None,
+        sampler_mode=args.mesh_predictor_sampler,
+        save_preds=True,
+        save_errors=True,
         save_dir=save_dir,
-        vis_dir=os.path.join(save_dir,'figs'),
         )
+
+  elif args.flow_infer:
+    if cfg['model'].name in ("pairflow", 'pair_disentangle_flow'):
+      model = trainer.model
+    else:
+      raise NotImplementedError
+    evaluate_modules.evaluate_flow_infer(
+        model=model,
+        device=trainer.device,
+        val_loader=val_loader if args.val_only else test_loader,
+        vis_data=None,
+        sampler_mode=args.flow_infer_sampler,
+        save_preds=True,
+        save_errors=True,
+        save_dir=save_dir,
+        )
+
   else:
     mean_metrics = evaluate(
         trainer,
@@ -328,14 +278,14 @@ if __name__ == '__main__':
         vis_dir=os.path.join(save_dir,'figs'),
         )
 
-  # logging metrics
-  logging.info(F'========== {"evaluating" if args.val_only else "testing" } =========')
-  logging.info(F'========== @ "{args.restore_file}" ==========')
-  logging.info("- metrics: " + " ; ".join(F"{k}: {v:05.3f}" for k, v in mean_metrics.items()))
+    # logging metrics
+    logging.info(F'========== {"evaluating" if args.val_only else "testing" } =========')
+    logging.info(F'========== @ "{args.restore_file}" ==========')
+    logging.info("- metrics: " + " ; ".join(F"{k}: {v:05.3f}" for k, v in mean_metrics.items()))
 
-  # save metrics
-  utils.save_dict_to_json(
-      mean_metrics,
-      os.path.join(save_dir, "mean_metrics.json"),
-      )
+    # save metrics
+    utils.save_dict_to_json(
+        mean_metrics,
+        os.path.join(save_dir, "mean_metrics.json"),
+        )
 
