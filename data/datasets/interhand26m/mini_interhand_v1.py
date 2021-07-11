@@ -41,7 +41,7 @@ class MiniInterHand_v1(Videos):
                mano_root=None,
                images_features=None,
                val_idx=25,
-               test_idx=25,
+               test_idx=100,
                **kwargs,
                ):
     """
