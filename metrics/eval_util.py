@@ -50,6 +50,11 @@ class EvalUtil:
         epe_median = np.median(data)
         return epe_mean, epe_median
 
+    def _get_samples_epe(self):
+      """ Returns error for each sample averaged over it's keypoints """
+      data = np.array(self.data)
+      return np.mean(data, axis=0).tolist()
+
     def get_measures(self, val_min, val_max, steps):
         """ Outputs the average mean and median error as well as the pck score. """
         thresholds = np.linspace(val_min, val_max, steps)
@@ -86,7 +91,7 @@ class EvalUtil:
             auc /= norm_factor
             auc_all.append(auc)
 
-        epe_mean_list = epe_mean_all
+        epe_list = self._get_samples_epe()
         epe_mean_all = np.mean(np.array(epe_mean_all))
         epe_median_all = np.mean(np.array(epe_median_all))
         auc_all = np.mean(np.array(auc_all))
@@ -95,8 +100,7 @@ class EvalUtil:
         # THRESHOLDS 20 mm-50 mm
         pck_curve_all_sub, threshs_sub = pck_curve_all[40:], thresholds[40:]
         auc_sub = calc_auc(threshs_sub, pck_curve_all_sub)
-
-        return epe_mean_list, epe_mean_all, epe_median_all, auc_all, pck_curve_all, thresholds, auc_sub
+        return epe_list, epe_mean_all, epe_median_all, auc_all, pck_curve_all, thresholds, auc_sub
 
 def calc_auc(x, y):
     """

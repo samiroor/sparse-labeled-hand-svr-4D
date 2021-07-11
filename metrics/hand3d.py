@@ -226,6 +226,7 @@ def mesh_error(
   for item in eval_list:
     eval_item = eval('eval_mesh_err{}'.format(item))
     for idx in range(len(verts_list)):
+      print(f'eval_mesh {item} - sample {idx}')
       verts = np.array(verts_list[idx]).copy()
       verts_pred = np.array(verts_pred_list[idx]).copy()
       # Convert Metrics to "mm"
@@ -283,12 +284,18 @@ def mesh_error(
                            'PCV curve for mesh{} error'.format(item)))
 
   # F SCORE
-  f_out = list()
+  f_out = {}
   f_score, f_score_aligned = np.array(f_score).T, np.array(f_score_aligned).T
   for f, fa, t in zip(f_score, f_score_aligned, f_threshs):
-    f_out.append('f_score_%d: %f' % (round(t), f.mean()))
-    f_out.append('f_al_score_%d: %f' % (round(t), fa.mean()))
-  errors['F scores'] = ['%s\n' % t for t in f_out]
+    f_out.update({f'f_score_{round(t)}': f.mean()})
+    f_out.update({f'f_al_score_{round(t)}': fa.mean()})
+  errors.update(f_out)
+  #f_out = list()
+  #f_score, f_score_aligned = np.array(f_score).T, np.array(f_score_aligned).T
+  #for f, fa, t in zip(f_score, f_score_aligned, f_threshs):
+  #  f_out.append('f_score_%d: %f' % (round(t), f.mean()))
+  #  f_out.append('f_al_score_%d: %f' % (round(t), fa.mean()))
+  #errors['F scores'] = ['%s\n' % t for t in f_out]
 
   return errors, curves
 

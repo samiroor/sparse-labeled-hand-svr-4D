@@ -64,6 +64,7 @@ def get_spec_name(cfg, name=''):
         "do_augment",
         "add_first_last_frame",
         "use_mini_dataset",
+        "mini_dataset_file",
         ):
       continue
     name += f'_{k}_'
