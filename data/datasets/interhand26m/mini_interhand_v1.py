@@ -41,6 +41,7 @@ class MiniInterHand_v1(Videos):
                mano_root=None,
                images_features=None,
                val_idx=25,
+               test_idx=25,
                **kwargs,
                ):
     """
@@ -153,7 +154,9 @@ class MiniInterHand_v1(Videos):
     elif self.split == 'val':
       video_names = annots['video_names'][-val_idx:]
     if self.split == 'test':
-      video_names = annots['video_names'] # len(annots) == len(video_names)
+      #video_names = annots['video_names'] # len(annots) == len(video_names)
+      random_state = np.random.RandomState(0)
+      video_names = random_state.choice(annots['video_names'], test_idx).tolist()
 
     video_folders  = dict(filter(lambda elem:elem[0] in video_names, annots['video_folders'].items()))
     # arrange frames of each video
