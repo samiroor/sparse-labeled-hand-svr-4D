@@ -9,7 +9,7 @@ OUTPUT_DIR = 'outputs_minHo3D_velocity_field_RotationTranslation'
 
 parser = argparse.ArgumentParser(description='creating error tables')
 parser.add_argument('--on_split', default='val')
-parser.add_argument('--visualize', dest='visulize', action='store_true')
+parser.add_argument('--visualize', dest='visualize', action='store_true')
 
 parser.add_argument('--sampler_mode', default='unsupervised')
 parser.add_argument('--exp_dir', default='exps_miniHo3d/obman/supFrac_0.0078125_lr5e-5/', help="Experiment Directory & config") #just to have dataset on on-split to vis
