@@ -262,8 +262,10 @@ class EvalDataset(ShImgDataset):
     else:
       raise NotImplementedError
 
-
   def __getitem__(self, item):
+    return self.pop_sample(item)
+
+  def pop_sample(self, item):
     # all frames
     if self.sampler_mode == "all":
       video_frame = self.dataset.list_videos_frames[item]
