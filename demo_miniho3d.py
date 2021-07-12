@@ -4,11 +4,13 @@ import argparse
 
 
 import  error_table, visualize_samples
-OUTPUT_DIR = 'outputs_minHo3D'
+OUTPUT_DIR = 'outputs_minHo3D_velocity_field_RotationTranslation'
 
 
 parser = argparse.ArgumentParser(description='creating error tables')
 parser.add_argument('--on_split', default='val')
+parser.add_argument('--visualize', dest='visulize', action='store_true')
+
 parser.add_argument('--sampler_mode', default='unsupervised')
 parser.add_argument('--exp_dir', default='exps_miniHo3d/obman/supFrac_0.0078125_lr5e-5/', help="Experiment Directory & config") #just to have dataset on on-split to vis
 
@@ -41,8 +43,9 @@ if __name__ == '__main__':
   methods_vis_dict ={k:v for k,v in methods_dict.items()\
       if k in ('mesh_predictor(s_s)', 'pose_alignment(s_u)')}
 
-  visualize_samples.main(
+  if args.visualize:
+    visualize_samples.main(
       args,
       methods_dict,
-      save_dir=OUTPUT_DIR,
+      save_dir=os.path.join(OUTPUT_DIR,f'figs_split_{ON_SPLIT}'),
       )
