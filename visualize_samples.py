@@ -138,18 +138,31 @@ def main(
         shuffle=False,
         )
 
-  #### samples ids ### #TODO
-  samples_ids = [4095, 4094, 4092, 4093, 4096, 4091, 4090, 12821, 12823, 12824] # np.random.choice(2000,16)
+  #### samples ids ####TODO
+  ref1 = 'mesh_predictor(s)'
+  with open(os.path.join(methods_dict[ref1], 'errors.pkl'),'rb') as fp:
+    err1 = pickle.load(fp)['joints']['xyz_mean3d_list']
+
+  ref2 = 'pose_alignment(s_u)'
+  with open(os.path.join(methods_dict[ref1], 'errors.pkl'),'rb') as fp:
+    err2= pickle.load(fp)['joints']['xyz_mean3d_list']
+
+  dist = np.array(err2) - np.array(err1)
+  suc_ids = dist.argsort()[:32]
+  fail_ids = dist.argsort()[-32:]
+
+  #samples_ids = [4095, 4094, 4092, 4093, 4096, 4091, 4090, 12821, 12823, 12824] # np.random.choice(2000,16)
 
   #### get images ####
-  t = BaseTrainer()
-  get_images_file(
+  for name, samples_ids in zip(['suc', 'fail'], [suc_ids, fail_ids]):
+    t = BaseTrainer()
+    get_images_file(
       test_loader,
       args.sampler_mode,
       methods_dict,
       visual_fn=t._visualize_step,
       samples_ids=samples_ids,
-      save_dir=save_dir,
+      save_dir=os.path.join(save_dir,name),
       )
 
 
