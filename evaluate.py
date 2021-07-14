@@ -28,6 +28,7 @@ parser = argparse.ArgumentParser(
 parser.add_argument('--exp_dir', default='exp_dir/config.json', help="Experiment Directory & config")
 parser.add_argument('--restore_file', default=None, help="Weights to reload before training")
 parser.add_argument('--allow_partial', dest='allow_partial', action='store_true')
+
 parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
 parser.add_argument('--val_only', dest='val_only', action='store_true')
 
@@ -35,7 +36,11 @@ parser.add_argument('--mesh_predictor', dest='mesh_predictor', action='store_tru
 parser.add_argument('--mesh_predictor_sampler', default='unsupervised')
 parser.add_argument('--flow_infer', dest='flow_infer', action='store_true')
 parser.add_argument('--flow_infer_sampler', default="unsupervised_supervised")
+
 parser.add_argument('--test_split', default='test')
+parser.add_argument('--no_mesh_error', dest='no_mesh_error', action='store_true')
+
+
 
 ### evaluate Model ###
 def evaluate(
@@ -182,7 +187,10 @@ if __name__ == '__main__':
         training=False,
         shuffle=True,
         )
-    vis_data = next(iter(vis_loader))
+    vis_loader = iter(vis_loader)
+    vis_data0 = next(vis_loader)
+    vis_data = next(vis_loader)
+
     vis_loader = None
 
     test_loader = builder.get_dataloaders(
@@ -247,6 +255,7 @@ if __name__ == '__main__':
         save_preds=True,
         save_errors=True,
         save_dir=save_dir,
+        calc_mesh_error=not args.no_mesh_error,
         )
 
   elif args.flow_infer:
@@ -263,6 +272,7 @@ if __name__ == '__main__':
         save_preds=True,
         save_errors=True,
         save_dir=save_dir,
+        calc_mesh_error= not args.no_mesh_error,
         )
 
   else:

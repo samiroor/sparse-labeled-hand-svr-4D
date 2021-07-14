@@ -24,6 +24,7 @@ def evaluate_flow_infer(
     save_gts=False,
     save_errors=True,
     save_dir=None,
+    calc_mesh_error=True,
     ):
 
   gt_joints3d_list = []; gt_verts3d_list = []
@@ -79,16 +80,28 @@ def evaluate_flow_infer(
   pred_joints3d_list = np.concatenate(pred_joints3d_list, axis=0)
   pred_verts3d_list = np.concatenate(pred_verts3d_list, axis=0)
 
+  # save preds & gts
+  if save_preds:
+    save_file = os.path.join(save_dir, 'pred.pkl')
+    logging.info(f'predictions saved @ {save_file}')
+    with open(save_file, 'wb') as fp:
+      pickle.dump([pred_joints3d_list, pred_verts3d_list], fp)
+
+  if save_gts:
+    save_file = os.path.join(save_dir, 'gt.pkl')
+    logging.info(f'gts saved @ {save_file}')
+    with open(save_file, 'wb') as fp:
+      pickle.dump([gt_joints3d_list, gt_verts3d_list], fp)
+
   # calc errors
   calc_metrics(
       gt_joints3d_list=gt_joints3d_list,
       gt_verts3d_list=gt_verts3d_list,
       pred_joints3d_list=pred_joints3d_list,
       pred_verts3d_list=pred_verts3d_list,
-      save_preds=save_preds,
-      save_gts=save_gts,
       save_errors=save_errors,
       save_dir=save_dir,
+      calc_mesh_error=calc_mesh_error,
       )
 
 
@@ -103,6 +116,7 @@ def evaluate_mesh_predictor(
     save_gts=False,
     save_errors=True,
     save_dir=None,
+    calc_mesh_error=True,
     ):
 
   gt_joints3d_list = []; gt_verts3d_list = []
@@ -146,31 +160,8 @@ def evaluate_mesh_predictor(
   pred_joints3d_list = np.concatenate(pred_joints3d_list, axis=0)
   pred_verts3d_list = np.concatenate(pred_verts3d_list, axis=0)
 
-  # calc errors
-  calc_metrics(
-      gt_joints3d_list=gt_joints3d_list,
-      gt_verts3d_list=gt_verts3d_list,
-      pred_joints3d_list=pred_joints3d_list,
-      pred_verts3d_list=pred_verts3d_list,
-      save_preds=save_preds,
-      save_gts=save_gts,
-      save_errors=save_errors,
-      save_dir=save_dir)
 
-
-
-### calc metrics ###
-def calc_metrics(
-    gt_joints3d_list,
-    gt_verts3d_list,
-    pred_joints3d_list,
-    pred_verts3d_list,
-    save_preds,
-    save_gts,
-    save_errors,
-    save_dir):
-
-  # dump preds & gts
+  # save preds & gts
   if save_preds:
     save_file = os.path.join(save_dir, 'pred.pkl')
     logging.info(f'predictions saved @ {save_file}')
@@ -183,6 +174,31 @@ def calc_metrics(
     with open(save_file, 'wb') as fp:
       pickle.dump([gt_joints3d_list, gt_verts3d_list], fp)
 
+
+  # calc errors
+  calc_metrics(
+      gt_joints3d_list=gt_joints3d_list,
+      gt_verts3d_list=gt_verts3d_list,
+      pred_joints3d_list=pred_joints3d_list,
+      pred_verts3d_list=pred_verts3d_list,
+      save_errors=save_errors,
+      save_dir=save_dir,
+      calc_mesh_error=calc_mesh_error,
+      )
+
+
+
+### calc metrics ###
+def calc_metrics(
+    gt_joints3d_list,
+    gt_verts3d_list,
+    pred_joints3d_list,
+    pred_verts3d_list,
+    save_errors,
+    save_dir,
+    calc_mesh_error=True):
+
+
   # calc metrics
   logging.info(f'Calculating joints error ...')
   joints_error_dict, _= xyz_error(
@@ -193,10 +209,13 @@ def calc_metrics(
       )
 
   logging.info(f'Calculating mesh error ...')
-  mesh_error_dict, _ = mesh_error(
+  if calc_mesh_error:
+    mesh_error_dict, _ = mesh_error(
       verts_list=gt_verts3d_list,
       verts_pred_list=pred_verts3d_list,
       )
+  else:
+    mesh_error_dict = {}
 
   if save_errors:
     save_file = os.path.join(save_dir, 'errors.pkl')
