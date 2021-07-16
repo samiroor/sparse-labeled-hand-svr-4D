@@ -27,7 +27,7 @@ def is_valid(ann, image_path, ref_handside='right'):
   if flag:
     print(f"Reading {image_path}")
     img = np.array(Image.open(image_path))
-    if (img = 0).all():
+    if (img == 0).all():
       return False
   return flag
 
