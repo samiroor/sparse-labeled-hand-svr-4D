@@ -1,12 +1,14 @@
 import os
 import json
 import pickle
+import numpy as np
+from PIL import Image
 from collections import defaultdict, OrderedDict
 from pycocotools.coco import COCO
 
 ############ functions ##################
 
-def is_valid(ann, ref_handside='right'):
+def is_valid(ann, image_path, ref_handside='right'):
   # handside validity
   if ref_handside =="all":
     pass
@@ -21,6 +23,12 @@ def is_valid(ann, ref_handside='right'):
     flag =  all([v[0] for v in ann['joint_valid']][:21])
   elif ann['hand_type']=="left":
     flag = all([v[0] for v in ann['joint_valid']][-21:])
+  # RGB validity
+  if flag:
+    print(f"Reading {image_path}")
+    img = np.array(Image.open(image_path))
+    if (img = 0).all():
+      return False
   return flag
 
 
@@ -87,8 +95,9 @@ for aid in db.anns.keys():
 
   video_dir = os.path.join("images",split,ann2video_name(ann))
   video_sub = os.path.join("images",split,ann2video_wocam(ann))
+  image_path = os.path.join(db_root, "images", split, ann["file_name"])
 
-  if is_valid(ann, ref_handside):
+  if is_valid(ann, image_path, ref_handside):
     video_folders[video_dir].append(ann)
     video_subjects.add(video_sub)
 

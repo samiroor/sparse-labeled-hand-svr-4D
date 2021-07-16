@@ -236,6 +236,7 @@ class InterHand(Videos):
     return f"Capture{ann['capture']}/{ann['seq_name']}/cam{ann['camera']}/"
 
   def is_valid(self, ann):
+    #TODO add RGB validity
     # handside
     if self._ref_handside =="all":
       pass
