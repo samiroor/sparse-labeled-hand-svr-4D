@@ -165,7 +165,7 @@ def _evaluate(
           val_loader,
           sampler_mode)
     elif module_name == "mesh_predictor":
-      assert sampler_mode in ("unsupervised", "supervised")
+      assert sampler_mode in ("unsupervised", "supervised", "all")
       gt_joints3d_list, gt_verts3d_list, pred_joints3d_list, pred_verts3d_list = _evaluate_mesh_predictor(
           model,
           device,
