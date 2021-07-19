@@ -368,7 +368,7 @@ def read_pickle(filename):
 
 def save_pickle(filedata, filename):
   with open(filename, 'wb') as fp:
-    pickle.dump(filedata, filename)
+    pickle.dump(filedata, fp)
 
 
 
