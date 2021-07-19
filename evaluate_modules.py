@@ -13,18 +13,65 @@ from data import ShImgDataset
 from metrics.hand3d import xyz_error, mesh_error
 
 
-### evaluate flow module ###
-def evaluate_flow_infer(
+
+### evaluate mesh predictor module ###
+def _evaluate_mesh_predictor(
     model,
     device,
     val_loader,
-    vis_data,
+    sampler_mode='unsupervised',
+    ):
+
+  gt_joints3d_list = []; gt_verts3d_list = []
+  pred_joints3d_list = []; pred_verts3d_list = []
+
+  model.eval()
+  data_sampler = Sampler(val_loader, sampler_mode)
+  data_sampler = iter(data_sampler)
+
+  with tqdm(total=len(data_sampler)) as t:
+    for i in range(len(data_sampler)):
+      sample = next(data_sampler)
+      sample = dict(
+          map(lambda kv:(kv[0], kv[1].float().to(device)), sample.items())
+          )
+
+      with torch.no_grad():
+        pred = model(sample)
+
+      # append gt_list & pred_list 
+      sample = dict(
+          map(lambda kv:(kv[0], kv[1].detach().cpu().numpy()), sample.items())
+          )
+      pred = dict(
+          map(lambda kv:(kv[0], kv[1].detach().cpu().numpy()), pred.items())
+          )
+
+      gt_joints3d_list.append(sample[Fls.joints3d])
+      gt_verts3d_list.append(sample[Fls.verts3d])
+
+      pred_joints3d_list.append(pred[Fls.joints3d])
+      pred_verts3d_list.append(pred[Fls.verts3d])
+
+      t.set_postfix(sample=i+1, sampler_mode=sampler_mode)
+      t.update()
+
+  # concatenate
+  gt_joints3d_list = np.concatenate(gt_joints3d_list, axis=0)
+  gt_verts3d_list = np.concatenate(gt_verts3d_list, axis=0)
+  pred_joints3d_list = np.concatenate(pred_joints3d_list, axis=0)
+  pred_verts3d_list = np.concatenate(pred_verts3d_list, axis=0)
+
+  return gt_joints3d_list, gt_verts3d_list, pred_joints3d_list, pred_verts3d_list
+
+
+
+### evaluate flow module ###
+def _evaluate_flow_infer(
+    model,
+    device,
+    val_loader,
     sampler_mode='unsupervised_supervised',
-    save_preds=False,
-    save_gts=False,
-    save_errors=True,
-    save_dir=None,
-    calc_mesh_error=True,
     ):
 
   gt_joints3d_list = []; gt_verts3d_list = []
@@ -74,117 +121,80 @@ def evaluate_flow_infer(
 
 
   # concatenate
-  dataset = None
   gt_joints3d_list = np.concatenate(gt_joints3d_list, axis=0)
   gt_verts3d_list = np.concatenate(gt_verts3d_list, axis=0)
   pred_joints3d_list = np.concatenate(pred_joints3d_list, axis=0)
   pred_verts3d_list = np.concatenate(pred_verts3d_list, axis=0)
 
-  # save preds & gts
-  if save_preds:
-    save_file = os.path.join(save_dir, 'pred.pkl')
-    logging.info(f'predictions saved @ {save_file}')
-    with open(save_file, 'wb') as fp:
-      pickle.dump([pred_joints3d_list, pred_verts3d_list], fp)
-
-  if save_gts:
-    save_file = os.path.join(save_dir, 'gt.pkl')
-    logging.info(f'gts saved @ {save_file}')
-    with open(save_file, 'wb') as fp:
-      pickle.dump([gt_joints3d_list, gt_verts3d_list], fp)
-
-  # calc errors
-  calc_metrics(
-      gt_joints3d_list=gt_joints3d_list,
-      gt_verts3d_list=gt_verts3d_list,
-      pred_joints3d_list=pred_joints3d_list,
-      pred_verts3d_list=pred_verts3d_list,
-      save_errors=save_errors,
-      save_dir=save_dir,
-      calc_mesh_error=calc_mesh_error,
-      )
+  return gt_joints3d_list, gt_verts3d_list, pred_joints3d_list, pred_verts3d_list
 
 
-### evaluate mesh predictor module ###
-def evaluate_mesh_predictor(
+
+### evaluate  module ###
+def _evaluate(
     model,
     device,
     val_loader,
-    vis_data,
-    sampler_mode='unsupervised',
-    save_preds=False,
-    save_gts=False,
-    save_errors=True,
-    save_dir=None,
+    sampler_mode,
+    module_name='mesh_predictor',
+    save_preds_gts=True,
+    calc_error=True,
     calc_mesh_error=True,
+    save_dir=None,
     ):
 
-  gt_joints3d_list = []; gt_verts3d_list = []
-  pred_joints3d_list = []; pred_verts3d_list = []
+  logging.info(f"Evaluating module {module_name} ...")
+  gt_file = os.path.join(save_dir, 'gt.pkl')
+  pred_file = os.path.join(save_dir, 'pred.pkl')
+  error_file = os.path.join(save_dir, 'errors.pkl')
 
-  model.eval()
-  data_sampler = Sampler(val_loader, sampler_mode)
-  data_sampler = iter(data_sampler)
+  # obtain gt & pred
+  if os.path.exists(pred_file) and os.path.exists(gt_file):
+    logging.info(f"LOADING GTs from {gt_file}")
+    logging.info(f"LOADING PRDs from {pred_file}")
+    gt_joints3d_list, gt_verts3d_list = read_pickle(gt_file)
+    pred_joints3d_list, pred_verts3d_list = read_pickle(pred_file)
 
-  with tqdm(total=len(data_sampler)) as t:
-    for i in range(len(data_sampler)):
-      sample = next(data_sampler)
-      sample = dict(
-          map(lambda kv:(kv[0], kv[1].float().to(device)), sample.items())
-          )
+  else:
+    logging.info(f"RUNNING module {module_name} in sampler mode {sampler_mode}")
+    if module_name == "flow_infer":
+      assert sampler_mode == "unsupervised_supervised"
+      gt_joints3d_list, gt_verts3d_list, pred_joints3d_list, pred_verts3d_list = _evaluate_flow_infer(
+          model,
+          device,
+          val_loader,
+          sampler_mode)
+    elif module_name == "mesh_predictor":
+      assert sampler_mode in ("unsupervised", "supervised")
+      gt_joints3d_list, gt_verts3d_list, pred_joints3d_list, pred_verts3d_list = _evaluate_mesh_predictor(
+          model,
+          device,
+          val_loader,
+          sampler_mode)
+      pass
+    else:
+      raise NotImplementedError
 
-      with torch.no_grad():
-        pred = model(sample)
+    # save preds & gts
+    if save_preds_gts:
+      logging.info(f"SAVING GTs in {gt_file}")
+      logging.info(f"SAVING PRDs on {pred_file}")
+      save_pickle([gt_joints3d_list, gt_verts3d_list], gt_file)
+      save_pickle([pred_joints3d_list, pred_verts3d_list], pred_file)
 
-      # append gt_list & pred_list 
-      sample = dict(
-          map(lambda kv:(kv[0], kv[1].detach().cpu().numpy()), sample.items())
-          )
-      pred = dict(
-          map(lambda kv:(kv[0], kv[1].detach().cpu().numpy()), pred.items())
-          )
-
-      gt_joints3d_list.append(sample[Fls.joints3d])
-      gt_verts3d_list.append(sample[Fls.verts3d])
-
-      pred_joints3d_list.append(pred[Fls.joints3d])
-      pred_verts3d_list.append(pred[Fls.verts3d])
-
-      t.set_postfix(sample=i+1, sampler_mode=sampler_mode)
-      t.update()
-
-  # concatenate
-  dataset = None
-  gt_joints3d_list = np.concatenate(gt_joints3d_list, axis=0)
-  gt_verts3d_list = np.concatenate(gt_verts3d_list, axis=0)
-  pred_joints3d_list = np.concatenate(pred_joints3d_list, axis=0)
-  pred_verts3d_list = np.concatenate(pred_verts3d_list, axis=0)
-
-
-  # save preds & gts
-  if save_preds:
-    save_file = os.path.join(save_dir, 'pred.pkl')
-    logging.info(f'predictions saved @ {save_file}')
-    with open(save_file, 'wb') as fp:
-      pickle.dump([pred_joints3d_list, pred_verts3d_list], fp)
-
-  if save_gts:
-    save_file = os.path.join(save_dir, 'gt.pkl')
-    logging.info(f'gts saved @ {save_file}')
-    with open(save_file, 'wb') as fp:
-      pickle.dump([gt_joints3d_list, gt_verts3d_list], fp)
-
-
-  # calc errors
-  calc_metrics(
-      gt_joints3d_list=gt_joints3d_list,
-      gt_verts3d_list=gt_verts3d_list,
-      pred_joints3d_list=pred_joints3d_list,
-      pred_verts3d_list=pred_verts3d_list,
-      save_errors=save_errors,
-      save_dir=save_dir,
-      calc_mesh_error=calc_mesh_error,
-      )
+  # calc errors & metrics
+  if calc_error:
+    assert not os.path.exists(error_file), f"REMOVE {error_file} to calculate error!"
+    logging.info(f"Calculating Errors")
+    # calc errors
+    calc_metrics(
+        gt_joints3d_list=gt_joints3d_list,
+        gt_verts3d_list=gt_verts3d_list,
+        pred_joints3d_list=pred_joints3d_list,
+        pred_verts3d_list=pred_verts3d_list,
+        save_file=error_file,
+        calc_mesh_error=calc_mesh_error,
+        )
 
 
 
@@ -194,8 +204,7 @@ def calc_metrics(
     gt_verts3d_list,
     pred_joints3d_list,
     pred_verts3d_list,
-    save_errors,
-    save_dir,
+    save_file,
     calc_mesh_error=True):
 
 
@@ -217,14 +226,11 @@ def calc_metrics(
   else:
     mesh_error_dict = {}
 
-  if save_errors:
-    save_file = os.path.join(save_dir, 'errors.pkl')
 
-    logging.info(f'error saved @ {save_file}')
-    with open(save_file, 'wb') as fp:
-      pickle.dump({'joints': joints_error_dict, 'mesh': mesh_error_dict},
-          fp,
-          )
+  logging.info(f'error saved @ {save_file}')
+  save_pickle (
+      {'joints': joints_error_dict, 'mesh': mesh_error_dict},
+      save_file)
 
   logging.info(
       "- Eval joints metrics:\n" + " \n ".join(F"{k}: {v:03.3f}" for k, v in joints_error_dict.items()
@@ -235,6 +241,7 @@ def calc_metrics(
       "- Eval mesh metrics:\n" + " \n ".join(F"{k}: {v:03.3f}" for k, v in mesh_error_dict.items()
         if not isinstance(v, list))
       )
+
 
 
 ### data sampler ###
@@ -352,6 +359,18 @@ def Sampler(val_loader, sampler_mode='supervised'):
       shuffle=False,
       pin_memory=True,
       )
+
+
+def read_pickle(filename):
+  with open(filename, 'rb') as fp:
+    filedata = pickle.load(fp)
+  return filedata
+
+def save_pickle(filedata, filename):
+  with open(filename, 'wb') as fp:
+    pickle.dump(filedata, filename)
+
+
 
 
 #class Sampler(object):

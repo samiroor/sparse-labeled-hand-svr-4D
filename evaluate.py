@@ -38,7 +38,8 @@ parser.add_argument('--flow_infer', dest='flow_infer', action='store_true')
 parser.add_argument('--flow_infer_sampler', default="unsupervised_supervised")
 
 parser.add_argument('--test_split', default='test')
-parser.add_argument('--no_mesh_error', dest='no_mesh_error', action='store_true')
+parser.add_argument('--not_calc_error', dest='not_calc_error', action='store_true')
+parser.add_argument('--not_calc_mesh_error', dest='not_calc_mesh_error', action='store_true')
 
 
 
@@ -162,6 +163,7 @@ if __name__ == '__main__':
 
   ### data loaders ###
   if  args.val_only:
+    logging.info("Reading cfg['evaluating'] ... !")
     vis_loader = builder.get_dataloaders(
         cfg['evaluating'].dataloader,
         data_cfg=cfg['data_spec'],
@@ -180,6 +182,7 @@ if __name__ == '__main__':
         shuffle=False,
         )
   else:
+    logging.info("Reading cfg['testing'] ... !")
     vis_loader = builder.get_dataloaders(
         cfg['testing'].dataloader,
         data_cfg=cfg['data_spec'],
@@ -188,12 +191,11 @@ if __name__ == '__main__':
         shuffle=True,
         )
     vis_loader = iter(vis_loader)
-    vis_data0 = next(vis_loader)
     vis_data = next(vis_loader)
 
     vis_loader = None
 
-    test_loader = builder.get_dataloaders(
+    val_loader = builder.get_dataloaders(
         cfg['testing'].dataloader,
         data_cfg=cfg['data_spec'],
         augmentation_cfg={},
@@ -231,7 +233,7 @@ if __name__ == '__main__':
       device,
       exp_dir,
       mean_std_loader=None,
-      **side_fns(val_loader if args.val_only else test_loader),
+      **side_fns(val_loader),
       )
 
   ######## validate or test ##########
@@ -239,46 +241,42 @@ if __name__ == '__main__':
       args.restore_file,
       allow_partial=args.allow_partial,
       )
-  if args.mesh_predictor:
-    if cfg['model'].name in ('pairflow', 'pair_disentangle_flow', ):
-      model = trainer.model.module.mesh_predictor
-    elif cfg['model'].name in ('obman'):
-      model = trainer.model
-    else:
-      raise NotImplementedError
-    evaluate_modules.evaluate_mesh_predictor(
-        model=model,
-        device=trainer.device,
-        val_loader=val_loader if args.val_only else test_loader,
-        vis_data=None,
-        sampler_mode=args.mesh_predictor_sampler,
-        save_preds=True,
-        save_errors=True,
-        save_dir=save_dir,
-        calc_mesh_error=not args.no_mesh_error,
-        )
 
-  elif args.flow_infer:
-    if cfg['model'].name in ("pairflow", 'pair_disentangle_flow'):
-      model = trainer.model
-    else:
-      raise NotImplementedError
-    evaluate_modules.evaluate_flow_infer(
+  ####### evaluate modules OR Default evaluate ########
+  if args.mesh_predictor or args.flow_infer:
+    if args.mesh_predictor:
+      module_name = "mesh_predictor"
+      sampler_mode = args.mesh_predictor_sampler
+      if cfg['model'].name in ('pairflow', 'pair_disentangle_flow', ):
+        model = trainer.model.module.mesh_predictor
+      elif cfg['model'].name in ('obman'):
+        model = trainer.model
+      else:
+        raise NotImplementedError
+    if args.flow_infer:
+      module_name = "flow_infer"
+      sampler_mode = args.flow_infer_sampler
+      if cfg['model'].name in ("pairflow", 'pair_disentangle_flow'):
+        model = trainer.model
+      else:
+        raise NotImplementedError
+
+    evaluate_modules._evaluate(
         model=model,
         device=trainer.device,
-        val_loader=val_loader if args.val_only else test_loader,
-        vis_data=None,
-        sampler_mode=args.flow_infer_sampler,
-        save_preds=True,
-        save_errors=True,
+        val_loader=val_loader,
+        sampler_mode=sampler_mode,
+        module_name=module_name,
+        calc_error= not args.not_calc_error,
+        calc_mesh_error= not args.not_calc_mesh_error,
         save_dir=save_dir,
-        calc_mesh_error= not args.no_mesh_error,
         )
 
   else:
+
     mean_metrics = evaluate(
         trainer,
-        val_loader if args.val_only else test_loader,
+        val_loader,
         vis_data,
         epoch=epoch,
         calc_metrics=True,
