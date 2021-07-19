@@ -178,7 +178,7 @@ class BaseTrainer(object):
       pred_dict,
       multiFrame=False,
       multiIter=False,
-      keep_all=False,
+      keep_all=True,
       pop_list=['auc3d','woR'],
       ):
     """

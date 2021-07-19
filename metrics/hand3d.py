@@ -130,12 +130,14 @@ def xyz_error(
   eval_xyz = EvalUtil(num_kp)
   eval_xyz_trans_al = EvalUtil(num_kp)
   eval_xyz_scale_trans_al = EvalUtil(num_kp)
+  eval_xyz_scale_depth_al = EvalUtil(num_kp)
   eval_xyz_procrustes_al = EvalUtil(num_kp)
   eval_xyz_procrustes_woR_al = EvalUtil(num_kp)
 
   eval_list = ["xyz",
                "xyz_trans_al",
-               "xyz_scale_trans_al",
+               #"xyz_scale_trans_al",
+               "xyz_scale_depth_al",
                "xyz_procrustes_al",
                "xyz_procrustes_woR_al"]
 
@@ -166,6 +168,10 @@ def xyz_error(
         # scale & trans align
         xyz_pred_sc_tr_aligned = align_sc_tr(xyz, xyz_pred, ref_bone)
         eval_item.feed(xyz, vis, xyz_pred_sc_tr_aligned)
+      elif item == "xyz_scale_depth_al":
+        # scale & depth align
+        xyz_pred_sc_depth_aligned = align_sc_depth(xyz, xyz_pred)
+        eval_item.feed(xyz, vis, xyz_pred_sc_depth_aligned)
       elif item == "xyz_procrustes_woR_al":
         # procrustes align without R
         xyz_pred_aligned_woR = align_w_scale_woR(xyz, xyz_pred)

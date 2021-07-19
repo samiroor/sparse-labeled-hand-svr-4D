@@ -77,6 +77,31 @@ def align_sc_tr(mtx1, mtx2, ref_bone):
     return preds_sc_tr_al
 
 
+def align_sc_depth(mtx1, mtx2, return_trafo=False, fw=None):
+    """ Align the predicted entity in some depth & scale sense with the ground truth. """
+    # center
+    t1 = mtx1.mean(0)
+    t2 = mtx2.mean(0)
+    mtx1_t = mtx1 - t1
+    mtx2_t = mtx2 - t2
+
+    # scale
+    s1 = np.linalg.norm(mtx1_t) + 1e-8
+    mtx1_t /= s1
+    s2 = np.linalg.norm(mtx2_t) + 1e-8
+    mtx2_t /= s2
+
+    # orth alignment
+    R, s = orthogonal_procrustes(mtx1_t, mtx2_t)
+
+    # scale alignment (has same scale as mtx1)
+    mtx2_t = mtx2_t * s * s1
+    # depth alignment (has same depth as mtx1)
+    mtx2_t += np.concatenate([t2[:2], t1[-1:]], axis=-1)
+
+    return mtx2_t
+
+
 def align_w_scale(mtx1, mtx2, return_trafo=False, fw=None):
     """ Align the predicted entity in some optimality sense with the ground truth. """
     # center
