@@ -20,8 +20,7 @@ from .unsupervised_singlehand_img_dataset import UnsupervisedShImgDataset
 from .pair_supervised_unsupervised_singlehand_img_dataset import PairSupUnsupShImgDataset
 from .pair_supervised_any_singlehand_img_dataset import PairSupAnyShImgDataset
 from .pair_supervised_supervised_singlehand_img_dataset import PairSupSupShImgDataset
-
-
+from .sampler_dataset import SamplerDataset
 
 
 data_dict = {
@@ -39,6 +38,7 @@ dataset_dict = {
     "pair_supervised_unsupervised_singlehand_img":PairSupUnsupShImgDataset,
     "pair_supervised_any_singlehand_img":PairSupAnyShImgDataset,
     "pair_supervised_supervised_singlehand_img":PairSupSupShImgDataset,
+    "sampler_dataset":SamplerDataset,
     }
 
 batch_sampler_dict= {
@@ -148,6 +148,7 @@ def get_dataset(
           training=training,
           gap=cfg.get('gap',1),
           s_u_pick_ratio=cfg.get('s_u_pick_ratio', 0.5),
+          sampler_mode=cfg.get('sampler_mode', 'all'),
           **kwargs,
           )
     else:
