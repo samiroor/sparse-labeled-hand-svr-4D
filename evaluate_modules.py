@@ -9,7 +9,6 @@ import commentjson as json
 import torch
 
 from data import Fields as Fls
-from data import ShImgDataset
 from metrics.hand3d import xyz_error, mesh_error
 
 
@@ -26,8 +25,7 @@ def _evaluate_mesh_predictor(
   pred_joints3d_list = []; pred_verts3d_list = []
 
   model.eval()
-  data_sampler = Sampler(val_loader, sampler_mode)
-  data_sampler = iter(data_sampler)
+  data_sampler = iter(val_loader)
 
   with tqdm(total=len(data_sampler)) as t:
     for i in range(len(data_sampler)):
@@ -78,12 +76,11 @@ def _evaluate_flow_infer(
   pred_joints3d_list = []; pred_verts3d_list = []
 
   model.eval()
-  data_sampler = Sampler(val_loader, sampler_mode)
-  data_sampler = iter(data_sampler)
+  data_sampler = iter(val_loader)
 
   with tqdm(total=len(data_sampler)) as t:
     for i in range(len(data_sampler)):
-      sample_s, sample_u, _ = next(data_sampler)
+      sample_s, sample_u = next(data_sampler)
 
       sample_s = dict(
           map(lambda kv:(kv[0], kv[1].float().to(device)), sample_s.items())
@@ -246,119 +243,119 @@ def calc_metrics(
 
 ### data sampler ###
 
-class EvalDataset(ShImgDataset):
-  def __init__(
-      self,
-      dataset,
-      labelset,
-      sampler_mode,
-      ):
-
-    super().__init__(
-        dataset,
-        labelset,
-        do_augment=False,
-        augmentations={})
-
-    self.sampler_mode = sampler_mode
-
-    # logging
-    if self.sampler_mode == "all":
-      logging.info(
-      f"{len(self.dataset.list_videos_frames)}\
-      samples in mode {self.sampler_mode}.")
-
-    elif self.sampler_mode in ("supervised", ):
-      logging.info(
-      f"{len(self.dataset.list_supervised_videos_frames)} \
-      samples in mode {self.sampler_mode}.")
-
-    elif self.sampler_mode in ("unsupervised_supervised", "unsupervised"):
-      logging.info(
-      f"{len(self.dataset.list_unsupervised_videos_frames)} \
-          samples in mode {self.sampler_mode}.")
-
-  def __len__(self):
-    if self.sampler_mode == "all":
-      return self.dataset.num_videos_frames
-    elif self.sampler_mode in ("supervised", ):
-      return self.dataset.num_supervised_videos_frames
-    elif self.sampler_mode in ("unsupervised_supervised", "unsupervised"):
-      return self.dataset.num_unsupervised_videos_frames
-    else:
-      raise NotImplementedError
-
-  def __getitem__(self, item):
-    return self.pop_sample(item)
-
-  def pop_sample(self, item):
-    # all frames
-    if self.sampler_mode == "all":
-      video_frame = self.dataset.list_videos_frames[item]
-      video_id, frame = map(int, video_frame.split(':'))
-      video = self.dataset.videos[video_id]
-      frame_status = frame in video._supervised_frames
-      sample, meta = self.get_sample(video, frame, frame_status, video_id)
-      sample.pop('aug')
-      return sample
-
-    # supervied frames
-    elif self.sampler_mode == "supervised":
-      video_frame = self.dataset.list_supervised_videos_frames[item]
-      video_id, frame = map(int, video_frame.split(':'))
-      video = self.dataset.videos[video_id]
-      frame_status = frame in video._supervised_frames
-      assert frame_status == 1
-      sample, meta = self.get_sample(video, frame, frame_status, video_id)
-      sample.pop('aug')
-      return sample
-
-    # unsupervised frames
-    elif self.sampler_mode == "unsupervised":
-      video_frame = self.dataset.list_unsupervised_videos_frames[item]
-      video_id, frame = map(int, video_frame.split(':'))
-      video = self.dataset.videos[video_id]
-      frame_status = frame in video._supervised_frames
-      assert frame_status == 0
-      sample, meta = self.get_sample(video, frame, frame_status, video_id)
-      sample.pop('aug')
-      return sample
-
-    # keep  order of (s, u) to feed network!
-    elif self.sampler_mode == "unsupervised_supervised":
-      video_frame = self.dataset.list_unsupervised_videos_frames[item]
-      video_id, frame = map(int, video_frame.split(':'))
-      video = self.dataset.videos[video_id]
-      frame_status = frame in video._supervised_frames
-      assert frame_status == 0
-      sample_u, meta = self.get_sample(video, frame, frame_status, video_id)
-
-      frame_s = video.get_nearest_supervised_frames(frame, n=1)[0]
-      frame_status = frame_s in video._supervised_frames
-      assert frame_status == 1
-      sample_s,meta = self.get_sample(video, frame_s, frame_status, video_id)
-      sample_u.pop('aug')
-      sample_s.pop('aug')
-      return sample_s, sample_u, (frame_s, frame)
-
-    else:
-      raise NotImplementedError
-
-
-def Sampler(val_loader, sampler_mode='supervised'):
-  eval_dataset = EvalDataset(
-      dataset=val_loader.dataset.dataset,
-      labelset=val_loader.dataset.labelset,
-      sampler_mode=sampler_mode,
-      )
-
-  return torch.utils.data.DataLoader(
-      dataset=eval_dataset,
-      batch_size=32,
-      num_workers=8,
-      shuffle=False,
-      pin_memory=True,
-      )
+#class EvalDataset(ShImgDataset):
+#  def __init__(
+#      self,
+#      dataset,
+#      labelset,
+#      sampler_mode,
+#      ):
+#
+#    super().__init__(
+#        dataset,
+#        labelset,
+#        do_augment=False,
+#        augmentations={})
+#
+#    self.sampler_mode = sampler_mode
+#
+#    # logging
+#    if self.sampler_mode == "all":
+#      logging.info(
+#      f"{len(self.dataset.list_videos_frames)}\
+#      samples in mode {self.sampler_mode}.")
+#
+#    elif self.sampler_mode in ("supervised", ):
+#      logging.info(
+#      f"{len(self.dataset.list_supervised_videos_frames)} \
+#      samples in mode {self.sampler_mode}.")
+#
+#    elif self.sampler_mode in ("unsupervised_supervised", "unsupervised"):
+#      logging.info(
+#      f"{len(self.dataset.list_unsupervised_videos_frames)} \
+#          samples in mode {self.sampler_mode}.")
+#
+#  def __len__(self):
+#    if self.sampler_mode == "all":
+#      return self.dataset.num_videos_frames
+#    elif self.sampler_mode in ("supervised", ):
+#      return self.dataset.num_supervised_videos_frames
+#    elif self.sampler_mode in ("unsupervised_supervised", "unsupervised"):
+#      return self.dataset.num_unsupervised_videos_frames
+#    else:
+#      raise NotImplementedError
+#
+#  def __getitem__(self, item):
+#    return self.pop_sample(item)
+#
+#  def pop_sample(self, item):
+#    # all frames
+#    if self.sampler_mode == "all":
+#      video_frame = self.dataset.list_videos_frames[item]
+#      video_id, frame = map(int, video_frame.split(':'))
+#      video = self.dataset.videos[video_id]
+#      frame_status = frame in video._supervised_frames
+#      sample, meta = self.get_sample(video, frame, frame_status, video_id)
+#      sample.pop('aug')
+#      return sample
+#
+#    # supervied frames
+#    elif self.sampler_mode == "supervised":
+#      video_frame = self.dataset.list_supervised_videos_frames[item]
+#      video_id, frame = map(int, video_frame.split(':'))
+#      video = self.dataset.videos[video_id]
+#      frame_status = frame in video._supervised_frames
+#      assert frame_status == 1
+#      sample, meta = self.get_sample(video, frame, frame_status, video_id)
+#      sample.pop('aug')
+#      return sample
+#
+#    # unsupervised frames
+#    elif self.sampler_mode == "unsupervised":
+#      video_frame = self.dataset.list_unsupervised_videos_frames[item]
+#      video_id, frame = map(int, video_frame.split(':'))
+#      video = self.dataset.videos[video_id]
+#      frame_status = frame in video._supervised_frames
+#      assert frame_status == 0
+#      sample, meta = self.get_sample(video, frame, frame_status, video_id)
+#      sample.pop('aug')
+#      return sample
+#
+#    # keep  order of (s, u) to feed network!
+#    elif self.sampler_mode == "unsupervised_supervised":
+#      video_frame = self.dataset.list_unsupervised_videos_frames[item]
+#      video_id, frame = map(int, video_frame.split(':'))
+#      video = self.dataset.videos[video_id]
+#      frame_status = frame in video._supervised_frames
+#      assert frame_status == 0
+#      sample_u, meta = self.get_sample(video, frame, frame_status, video_id)
+#
+#      frame_s = video.get_nearest_supervised_frames(frame, n=1)[0]
+#      frame_status = frame_s in video._supervised_frames
+#      assert frame_status == 1
+#      sample_s,meta = self.get_sample(video, frame_s, frame_status, video_id)
+#      sample_u.pop('aug')
+#      sample_s.pop('aug')
+#      return sample_s, sample_u, (frame_s, frame)
+#
+#    else:
+#      raise NotImplementedError
+#
+#
+#def Sampler(val_loader, sampler_mode='supervised'):
+#  eval_dataset = EvalDataset(
+#      dataset=val_loader.dataset.dataset,
+#      labelset=val_loader.dataset.labelset,
+#      sampler_mode=sampler_mode,
+#      )
+#
+#  return torch.utils.data.DataLoader(
+#      dataset=eval_dataset,
+#      batch_size=32,
+#      num_workers=8,
+#      shuffle=False,
+#      pin_memory=True,
+#      )
 
 
 def read_pickle(filename):

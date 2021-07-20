@@ -33,9 +33,8 @@ parser.add_argument('--no-cuda', action='store_true', help='Do not use cuda.')
 parser.add_argument('--val_only', dest='val_only', action='store_true')
 
 parser.add_argument('--mesh_predictor', dest='mesh_predictor', action='store_true')
-parser.add_argument('--mesh_predictor_sampler', default='unsupervised')
 parser.add_argument('--flow_infer', dest='flow_infer', action='store_true')
-parser.add_argument('--flow_infer_sampler', default="unsupervised_supervised")
+parser.add_argument('--sampler_mode', default="all")
 
 parser.add_argument('--test_split', default='test')
 parser.add_argument('--not_calc_error', dest='not_calc_error', action='store_true')
@@ -102,12 +101,12 @@ def get_save_dir(cfg, exp_dir, args):
   suffix = utils.get_spec_name(cfg.dataloader)
   if args.mesh_predictor:
     suffix += '_eval_mesh_predictor'
-    suffix += f"_on_{args.mesh_predictor_sampler}_samples"
+    suffix += f"_on_{args.sampler_mode}_samples"
 
 
   elif args.flow_infer:
     suffix += '_eval_flow_infer'
-    suffix += f"_on_{'unsupervised' if args.flow_infer_sampler == 'unsupervised_supervised' else ''}_samples"
+    suffix += f"_on_{'unsupervised' if args.sampler_mode == 'unsupervised_supervised' else ''}_samples"
   else:
     suffix += '_eval_default'
 
@@ -132,6 +131,8 @@ if __name__ == '__main__':
     if 'datasets' in cfg['testing'].dataloader:
       for k in cfg['testing']['dataloader'].datasets:
         cfg['testing']['dataloader'].datasets[k]['split'] = args.test_split
+        cfg['testing']['dataloader'].datasets[k]['sampler_mode'] = args.sampler_mode
+
         print(f"test_split is '{args.test_split}' in {k} dataset")
 
   # save_dir & log file (using cfg)
@@ -246,7 +247,7 @@ if __name__ == '__main__':
   if args.mesh_predictor or args.flow_infer:
     if args.mesh_predictor:
       module_name = "mesh_predictor"
-      sampler_mode = args.mesh_predictor_sampler
+      assert args.sampler_mode in ("all", "supervised", "unsupervised")
       if cfg['model'].name in ('pairflow', 'pair_disentangle_flow', ):
         model = trainer.model.module.mesh_predictor
       elif cfg['model'].name in ('obman'):
@@ -255,7 +256,7 @@ if __name__ == '__main__':
         raise NotImplementedError
     if args.flow_infer:
       module_name = "flow_infer"
-      sampler_mode = args.flow_infer_sampler
+      assert args.sampler_mode in ("unsupervised_supervised")
       if cfg['model'].name in ("pairflow", 'pair_disentangle_flow'):
         model = trainer.model
       else:
@@ -265,7 +266,7 @@ if __name__ == '__main__':
         model=model,
         device=trainer.device,
         val_loader=val_loader,
-        sampler_mode=sampler_mode,
+        sampler_mode=args.sampler_mode,
         module_name=module_name,
         calc_error= not args.not_calc_error,
         calc_mesh_error= not args.not_calc_mesh_error,
