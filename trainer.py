@@ -136,7 +136,9 @@ class BaseTrainer(object):
     fns_dict = {
         'l2': torch.nn.functional.mse_loss,
         'l1': lambda x1,x2: torch.abs(x1-x2).mean(),
-        'penalty': lambda _,x2: torch.nn.functional.mse_loss(x2, torch.zeros_like(x2))
+        'penalty': lambda _,x2: torch.nn.functional.mse_loss(x2, torch.zeros_like(x2)),
+        'penalty_pose': lambda _,x2: torch.nn.functional.mse_loss(x2[...,3:], torch.zeros_like(x2[...,3:]))
+
         }
 
     _keys =[
@@ -178,7 +180,7 @@ class BaseTrainer(object):
       pred_dict,
       multiFrame=False,
       multiIter=False,
-      keep_all=True,
+      keep_all=False,
       pop_list=['auc3d','woR'],
       ):
     """

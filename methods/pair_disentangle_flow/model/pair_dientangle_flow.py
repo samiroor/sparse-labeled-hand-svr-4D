@@ -242,6 +242,10 @@ class PairDistFlow(nn.Module):
             th_pose_coeffs=morphed_pose,
             th_betas=morphed_shape,
             )
+        morphed_pose = torch.cat([
+          morphed_pose[...,:3],
+          morphed_pose[...,3:].mm(self.mesh_predictor.manolayer.th_selected_comps.pinverse())
+          ], dim=-1)
 
       # annotation metric
       if self.annot_metric == "m":
