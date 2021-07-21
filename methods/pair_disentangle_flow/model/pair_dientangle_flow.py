@@ -39,6 +39,7 @@ class PairDistFlow(nn.Module):
       use_gt_mano_shape=False,
       invert_from_gts=False,
       infer_from_gts=True,
+      regularize_on_pca_pose=False,
       **kwargs,
       ):
 
@@ -68,6 +69,7 @@ class PairDistFlow(nn.Module):
     self.annot_metric = self.mesh_predictor.annot_metric
     self.adaptor = self.mesh_predictor.adaptor
 
+    self.regularize_on_pca_pose = regularize_on_pca_pose
 
   def forward(
       self,
@@ -242,11 +244,11 @@ class PairDistFlow(nn.Module):
             th_pose_coeffs=morphed_pose,
             th_betas=morphed_shape,
             )
-        # caused numerical error 
-        #morphed_pose = torch.cat([
-        #  morphed_pose[...,:3],
-        #  morphed_pose[...,3:].mm(self.mesh_predictor.manolayer.th_selected_comps.pinverse())
-        #  ], dim=-1)
+        if self.regularize_on_pca_pose:
+          morphed_pose = torch.cat([
+            morphed_pose[...,:3],
+            morphed_pose[...,3:].mm(self.mesh_predictor.manolayer.th_selected_comps.pinverse())
+            ], dim=-1)
 
       # annotation metric
       if self.annot_metric == "m":

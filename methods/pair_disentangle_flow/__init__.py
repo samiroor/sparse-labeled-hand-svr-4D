@@ -182,6 +182,7 @@ def get_model(
       use_gt_mano_shape=use_gt_mano_shape,
       invert_from_gts=invert_from_gts,
       infer_from_gts=infer_from_gts,
+      regularize_on_pca_pose=cfg.get('regularize_on_pca_pose',False),
       **kwargs,
       )
 
