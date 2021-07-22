@@ -152,7 +152,8 @@ class MiniInterHand_v1(Videos):
     if self.split == 'train':
       video_names = annots['video_names'][:-val_idx]
     elif self.split == 'val':
-      video_names = annots['video_names'][-val_idx:]
+      #video_names = annots['video_names'][-val_idx:] 
+      video_names = annots['video_names'][-val_idx::4] # for PAIR experiments to do faster
     if self.split == 'test':
       #video_names = annots['video_names'] # len(annots) == len(video_names)
       random_state = np.random.RandomState(0)
