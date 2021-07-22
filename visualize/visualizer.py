@@ -223,7 +223,7 @@ def render(
 
   if verts_gt is not None:
     if colors_gt is None:
-      colors_gt = visutils.get_verts_colors(verts_gt, [0.650, 0.740, 0.850])
+      colors_gt = visutils.get_verts_colors(verts_gt, [0.4, 0.6, 0.9])
     if colors_prd is None and verts_prd is not None:
       colors_prd = err_cmap_colors(verts_prd, verts_gt)
 
@@ -250,6 +250,17 @@ def render(
         bg_color=images,
         )
     render_list.append(render_gt)
+    render_gt = fastrender.render(
+        verts_gt,
+        faces,
+        input_res,
+        camsintr,
+        colors_gt,
+        fill_back=False,
+        bg_color=None,
+        )
+    render_list.append(render_gt)
+
 
   # prd
   if verts_prd is not None:
@@ -259,7 +270,8 @@ def render(
         input_res,
         camsintr,
         colors_prd,
-        bg_color=images,
+        fill_back=False,
+        bg_color=None,#images,
         )
     render_list += [render_prd]
 
@@ -310,7 +322,7 @@ def save_images(
       ax.set_title('{}'.format(title), fontsize=fontsize)
 
     fig.savefig(
-        os.path.join(save_dir,f'{i}.png')
+        os.path.join(save_dir,f'{i}.png'), dpi=300
         )
     plt.close(fig)
 
@@ -319,12 +331,12 @@ def save_images(
 def create_video(video_file, img_folder='tmp', suffix='%d.png'):
   print(f'Creating \n {video_file}')
   visutils.images_to_video(img_folder=img_folder, video_file=video_file, suffix=suffix)
-  shutil.rmtree(img_folder)
+  #shutil.rmtree(img_folder)
   print('-  END')
 
 
 # cmap bar to show errors
-def cmap_bar(fig, xlim=[0.27, 0.05, 0.5, 0.02], max_val=0.05):
+def cmap_bar(fig, xlim=[0.27, 0.05, 0.5, 0.02], max_val=0.1):
   cax = fig.add_axes(xlim)
   cmap = matplotlib.cm.get_cmap("jet")
   norm = matplotlib.colors.Normalize(vmin=0, vmax=1)
@@ -340,7 +352,7 @@ def cmap_bar(fig, xlim=[0.27, 0.05, 0.5, 0.02], max_val=0.05):
   return cb, fig
 
 
-def err_cmap_colors(verts_prd, verts_gt, max_val=0.05):
+def err_cmap_colors(verts_prd, verts_gt, max_val=0.1):
   verts_errs = (verts_prd - verts_gt).norm(p=2, dim=-1)
   errs_colors = verts_errs / max_val
 

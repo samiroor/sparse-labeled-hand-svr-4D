@@ -1,4 +1,5 @@
 import os
+import logging
 import numpy as np
 from collections import defaultdict
 from tqdm import tqdm
@@ -59,6 +60,7 @@ class BaseTrainer(object):
     """
     restore_path = os.path.join(self.exp_dir, restore_file)
     assert os.path.exists(restore_path)
+    logging.info(f'Restoring {restore_path}')
 
     checkpoint = utils.load_checkpoint(
         restore_path,

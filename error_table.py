@@ -1,5 +1,7 @@
 import os
 import pickle
+from evaluate_modules import save_pickle, read_pickle
+
 
 
 filter_fn = lambda k: all(
@@ -9,8 +11,10 @@ filter_fn = lambda k: all(
      'woR'not in k,
      'scale_trans_al' not in k])
 
+
 paper_headers = {
     "methods":"methods",
+    "split":"split",
     "samples_number":"---",
     "f_al_score_5":'F@5',
     "f_al_score_15":'F@15',
@@ -24,33 +28,36 @@ paper_headers = {
     "xyz_mean3d" :'MPJPE',
     "xyz_trans_al_mean3d":'MPJPE (Trans-aligned)',
     "xyz_trans_al_auc3d":"---",
+    "xyz_scale_depth_al_mean3d":'MPJPE (ScaleDepth-aligned)',
+    "xyz_scale_depth_al_auc3d":"---",
     "xyz_procrustes_al_mean3d":'MPJPE (Proc-aligned)',
     "xyz_procrustes_al_auc3d":"---",
     }
 
 
+def get_table_headers(sample_method):
+  name, exp_dir, split = sample_method
+  error_file = os.path.join(exp_dir, 'errors.pkl')
+
+  metrics_dict = read_pickle(error_file)
+
+  joints_headers = list(filter(filter_fn, [k for k in metrics_dict['joints'].keys()]))
+  mesh_headers = list(filter(filter_fn, [k for k in metrics_dict['mesh'].keys()]))
+
+  headers = ['split', 'method', 'samples_number'] + joints_headers + mesh_headers
+  return headers
+
+
 def get_csv_file(
-    methods_dict,
-    ON_SPLIT,
-    save_dir,
+    methods_list,
+    save_file,
     ):
 
-  # methods names
-  methods = list(methods_dict.keys())
-
   # header of table
-  err_dir = os.path.join(methods_dict[methods[0]], 'errors.pkl')
-  with open(err_dir, 'rb') as fp:
-    metrics_dict = pickle.load(fp)
-    joints_headers = list(filter(filter_fn, [k for k in metrics_dict['joints'].keys()]))
-    mesh_headers = list(filter(filter_fn, [k for k in metrics_dict['mesh'].keys()]))
-  headers = ['methods', 'samples_number'] + joints_headers + mesh_headers
+  headers = get_table_headers(methods_list[0])
 
   # feed to csv file
-  os.makedirs(save_dir, exist_ok=True)
-  csv_file = os.path.join(save_dir, f'error_table_on_split_{ON_SPLIT}.csv')
-  print(f"Saving error table @ {csv_file}")
-
+  print(f"Saving error table @ {save_file}")
   with open(csv_file, 'w') as f:
     # headers
     for h in headers:
@@ -62,16 +69,23 @@ def get_csv_file(
     f.write('\n')
 
     # rows
-    for method in methods:
-      err_dir = os.path.join(methods_dict[method], 'errors.pkl')
-      with open(err_dir, 'rb') as fp:
-        metrics_dict = pickle.load(fp)
-        row = [method]
-        row += [metrics_dict['joints']['samples_number']]
-        row += [metrics_dict['joints'][k] for k in joints_headers]
-        row += [metrics_dict['mesh'][k] for k in mesh_headers]
+    for name, exp_dir, split in methods_list:
+      error_file = os.path.join(exp_dir, 'errors.pkl')
+      print(f'Reading {error_file}')
+
+      metrics_dict = read_pickle(error_file)
+
+      row = [split, method]
+      row += [metrics_dict['joints']['samples_number']]
+      for h in headers[2:]:
+        if h in metrics_dict['joints']:
+          row += [metrics_dict['joints'][h]]
+        elif h in metrics_dict['mesh']:
+          row += [metrics_dict['mesh'][h]]
+        else:
+          raise ValueError
 
       for r in row:
-        f.write(f'{r},')
+        f.write(f'{r:3.3f},')
       f.write('\n')
 

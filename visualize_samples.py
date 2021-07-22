@@ -10,21 +10,20 @@ import builder
 from data import Fields as Fls
 from trainer import BaseTrainer
 from visualize.visualizer  import save_images
-from evaluate_modules import Sampler
 
 
 def get_images_file(
-    test_loader,
+    val_loader,
     sampler_mode,
-    methods_dict,
+    methods_list,
     visual_fn,
-    samples_ids=[0,1,2,3],
-    save_dir='tmp'
+    samples_ids,
+    save_dir,
     ):
 
   # results dict
   results_dict = {}
-  for method, _dir in methods_dict.items():
+  for method, _dir, _, in methods_list:
     results_dict[method] = pop_pred_samples(
         os.path.join(_dir, 'pred.pkl'),
         samples_ids,
@@ -32,13 +31,13 @@ def get_images_file(
 
   # gt_dict
   gt_dict = pop_gt_samples(
-      test_loader,
+      val_loader,
       sampler_mode,
       samples_ids,
       )
 
   # images 
-  for method, _dir in methods_dict.items():
+  for method, _dir, _ in methods_list:
     pred_dict = results_dict[method]
     images = visualize_step(
         gt_dict=gt_dict,
@@ -75,12 +74,12 @@ def visualize_step(
 #### pop samples based on given ids ####
 
 def pop_gt_samples(
-    test_loader,
+    val_loader,
     sampler_mode,
     samples_ids,
     ):
   assert sampler_mode=="unsupervised", NotImplementedError
-  data_sampler = Sampler(test_loader, sampler_mode)
+  data_sampler = val_loader
   batch_samples = []
   for i in samples_ids:
     sample = data_sampler.dataset.pop_sample(i)
@@ -108,15 +107,21 @@ def pop_pred_samples(
       Fls.verts3d:torch.from_numpy(pred_verts3d_list[samples_ids]).cuda().float()
       }
 
+
+
 ##### main ####
 
 def main(
-    args,
-    methods_dict,
+    methods_list,
+    sampler_mode,
+    split,
+    exp_dir,
     save_dir,
+    criteria1='Baseline + Alignment Supervision',
+    criteria2='Baseline'
     ):
 
-  json_path = os.path.join(args.exp_dir, 'config.json')
+  json_path = os.path.join(exp_dir, 'config.json')
   assert os.path.isfile(json_path),\
       f'Not a json configuration file found at "{json_path}"!'
 
@@ -126,11 +131,12 @@ def main(
   if 'dataloader' in cfg['testing']:
     if 'datasets' in cfg['testing'].dataloader:
       for k in cfg['testing']['dataloader'].datasets:
-        cfg['testing']['dataloader'].datasets[k]['split'] = args.on_split
-        print(f"test_split is '{args.on_split}' in {k} dataset")
+        cfg['testing']['dataloader'].datasets[k]['split'] = split
+        cfg['testing']['dataloader'].datasets[k]['sampler_mode'] = sampler_mode
+        print(f"test_dataset is {k} on split '{split}' with {sampler_mode} samples")
 
   ### data loaders ###
-  test_loader = builder.get_dataloaders(
+  val_loader = builder.get_dataloaders(
         cfg['testing'].dataloader,
         data_cfg=cfg['data_spec'],
         augmentation_cfg={},
@@ -138,31 +144,32 @@ def main(
         shuffle=False,
         )
 
-  #### samples ids ####TODO
-  ref1 = 'mesh_predictor(s)'
-  with open(os.path.join(methods_dict[ref1], 'errors.pkl'),'rb') as fp:
-    err1 = pickle.load(fp)['joints']['xyz_mean3d_list']
+  #### sample ids ####
+  for method, _dir, _ in methods_list:
+    if criteria1 == method:
+      error_file = os.path.join(_dir, 'errors.pkl')
+      criteria1 = read_pickle(error_file)['xyz_mean3d_list']
+      break
 
-  ref2 = 'pose_alignment(s_u)'
-  with open(os.path.join(methods_dict[ref1], 'errors.pkl'),'rb') as fp:
-    err2= pickle.load(fp)['joints']['xyz_mean3d_list']
+  for method, _dir, _ in methods_list:
+    if criteria2 == method:
+      error_file = os.path.join(_dir, 'errors.pkl')
+      criteria2 = read_pickle(error_file)['xyz_mean3d_list']
+      break
 
-  dist = np.array(err2) - np.array(err1)
-  suc_ids = dist.argsort()[:32]
-  fail_ids = dist.argsort()[-32:]
-
-  #samples_ids = [4095, 4094, 4092, 4093, 4096, 4091, 4090, 12821, 12823, 12824] # np.random.choice(2000,16)
+  dist = np.array(criteria1) - np.array(criteria2)
+  idx = dist.argsort()
+  suc_ids = idx[:64]
+  fail_ids = idx[-64:]
 
   #### get images ####
-  for name, samples_ids in zip(['suc', 'fail'], [suc_ids, fail_ids]):
+  for name, samples_ids in zip(['success', 'failure'], [suc_ids, fail_ids]):
     t = BaseTrainer()
     get_images_file(
-      test_loader,
-      args.sampler_mode,
-      methods_dict,
+      val_loader,
+      sampler_mode,
+      methods_list,
       visual_fn=t._visualize_step,
       samples_ids=samples_ids,
       save_dir=os.path.join(save_dir,name),
       )
-
-
