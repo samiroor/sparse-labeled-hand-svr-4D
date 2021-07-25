@@ -18,6 +18,8 @@ parser.add_argument('--exp_dir', default='exps_miniHo3d/obman/supFrac_0.0078125_
 parser.add_argument('--baseline_dir', default='obman/supFrac_0.0078125_lr5e-5/run/')
 parser.add_argument('--proposed_dir', default='pairdisentangleflow_obman_pairSupervisedAny_supFrac_0.0078125/s_u_ratio_0.5_velocityfieldResflow/run/')
 
+parser.add_argument('--baseline_ckpt', default='best_loss')
+parser.add_argument('--proposed_ckpt', default='best_mesh_predictor_u__xyz_mean3d')
 
 
 if __name__ == "__main__":
