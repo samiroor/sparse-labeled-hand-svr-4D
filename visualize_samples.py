@@ -10,6 +10,7 @@ import builder
 from data import Fields as Fls
 from trainer import BaseTrainer
 from visualize.visualizer  import save_images
+from error_table import read_pickle
 
 
 def get_images_file(
@@ -118,7 +119,9 @@ def main(
     exp_dir,
     save_dir,
     criteria1='Baseline + Alignment Supervision',
-    criteria2='Baseline'
+    criteria2='Baseline',
+    nsamples=256,
+    batch_size=64,
     ):
 
   json_path = os.path.join(exp_dir, 'config.json')
@@ -148,28 +151,33 @@ def main(
   for method, _dir, _ in methods_list:
     if criteria1 == method:
       error_file = os.path.join(_dir, 'errors.pkl')
-      criteria1 = read_pickle(error_file)['xyz_mean3d_list']
+      criteria1 = read_pickle(error_file)['joints']['xyz_mean3d_list']
       break
 
   for method, _dir, _ in methods_list:
     if criteria2 == method:
       error_file = os.path.join(_dir, 'errors.pkl')
-      criteria2 = read_pickle(error_file)['xyz_mean3d_list']
+      criteria2 = read_pickle(error_file)['joints']['xyz_mean3d_list']
       break
 
   dist = np.array(criteria1) - np.array(criteria2)
   idx = dist.argsort()
-  suc_ids = idx[:64]
-  fail_ids = idx[-64:]
+  suc_ids = idx[:nsamples]
+  fail_ids = idx[-nsamples:]
+
+  suc_ids = [suc_ids[x:x+batch_size] for x in range(0, nsamples, batch_size)]
+  fail_ids = [fail_ids[x:x+batch_size] for x in range(0, nsamples, batch_size)]
+
 
   #### get images ####
-  for name, samples_ids in zip(['success', 'failure'], [suc_ids, fail_ids]):
+  for name, samples_ids_ in zip(['success', 'failure'], [suc_ids, fail_ids]):
     t = BaseTrainer()
-    get_images_file(
-      val_loader,
-      sampler_mode,
-      methods_list,
-      visual_fn=t._visualize_step,
-      samples_ids=samples_ids,
-      save_dir=os.path.join(save_dir,name),
-      )
+    for b , samples_ids in enumerate(samples_ids_):
+      get_images_file(
+          val_loader,
+          sampler_mode,
+          methods_list,
+          visual_fn=t._visualize_step,
+          samples_ids=samples_ids,
+          save_dir=os.path.join(save_dir,f'{name}_batch{b}'),
+          )

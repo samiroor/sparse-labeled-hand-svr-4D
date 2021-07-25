@@ -25,7 +25,7 @@ if __name__ == "__main__":
   os.makedirs(args.output_dir, exist_ok=True)
 
   methods_list = get_methods_list(args)
-  methods_list = list(filter( lambda a: a[2]==f'split_{args.test_split},{args.sampler_mode}_frames', methods_list))
+  methods_list = list(filter( lambda a: a[2]==f'split_{args.test_split}_{args.sampler_mode}_frames', methods_list))
 
   visualize_samples.main(
         methods_list,

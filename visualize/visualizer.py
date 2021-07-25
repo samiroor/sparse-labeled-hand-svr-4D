@@ -270,8 +270,7 @@ def render(
         input_res,
         camsintr,
         colors_prd,
-        fill_back=False,
-        bg_color=None,#images,
+        bg_color=images,
         )
     render_list += [render_prd]
 

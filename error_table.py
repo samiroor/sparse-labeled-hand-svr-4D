@@ -13,7 +13,7 @@ filter_fn = lambda k: all(
 
 
 paper_headers = {
-    "methods":"methods",
+    "method":"method",
     "split":"split",
     "samples_number":"---",
     "f_al_score_5":'F@5',
@@ -58,7 +58,7 @@ def get_csv_file(
 
   # feed to csv file
   print(f"Saving error table @ {save_file}")
-  with open(csv_file, 'w') as f:
+  with open(save_file, 'w') as f:
     # headers
     for h in headers:
       f.write(f'{h},')
@@ -69,15 +69,15 @@ def get_csv_file(
     f.write('\n')
 
     # rows
-    for name, exp_dir, split in methods_list:
+    for method_name, exp_dir, split in methods_list:
       error_file = os.path.join(exp_dir, 'errors.pkl')
-      print(f'Reading {error_file}')
+      print(f'####### Reading {error_file} ########')
 
       metrics_dict = read_pickle(error_file)
 
-      row = [split, method]
+      row = [split, method_name]
       row += [metrics_dict['joints']['samples_number']]
-      for h in headers[2:]:
+      for h in headers[3:]:
         if h in metrics_dict['joints']:
           row += [metrics_dict['joints'][h]]
         elif h in metrics_dict['mesh']:
@@ -86,6 +86,9 @@ def get_csv_file(
           raise ValueError
 
       for r in row:
-        f.write(f'{r:3.3f},')
+        if isinstance(r, str):
+          f.write(f'{r},')
+        else:
+          f.write(f'{r:3.3f},')
       f.write('\n')
 
