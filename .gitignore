@@ -33,4 +33,4 @@ bash*
 *.tar
 *.json
 *.swp
-
+*.csv
