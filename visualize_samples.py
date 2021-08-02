@@ -120,8 +120,9 @@ def main(
     save_dir,
     criteria1='Baseline + Alignment Supervision',
     criteria2='Baseline',
-    nsamples=256,
+    nsamples=64,
     batch_size=64,
+    thrs=50,
     ):
 
   json_path = os.path.join(exp_dir, 'config.json')
@@ -152,16 +153,19 @@ def main(
     if criteria1 == method:
       error_file = os.path.join(_dir, 'errors.pkl')
       criteria1 = read_pickle(error_file)['joints']['xyz_mean3d_list']
+      criteria1 = np.array(criteria1)
+      #valid_index = np.where(criteria1<thrs)[0]
       break
-
   for method, _dir, _ in methods_list:
     if criteria2 == method:
       error_file = os.path.join(_dir, 'errors.pkl')
       criteria2 = read_pickle(error_file)['joints']['xyz_mean3d_list']
+      criteria2 = np.array(criteria2)
       break
-
-  dist = np.array(criteria1) - np.array(criteria2)
+  valid_index = np.where(list(criteria1<thrs) and list(criteria2<thrs))[0]
+  dist = criteria1 - criteria2
   idx = dist.argsort()
+  idx = list(filter(lambda x: x in valid_index, idx))
   suc_ids = idx[:nsamples]
   fail_ids = idx[-nsamples:]
 

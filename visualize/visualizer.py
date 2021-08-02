@@ -250,16 +250,16 @@ def render(
         bg_color=images,
         )
     render_list.append(render_gt)
-    render_gt = fastrender.render(
-        verts_gt,
-        faces,
-        input_res,
-        camsintr,
-        colors_gt,
-        fill_back=False,
-        bg_color=None,
-        )
-    render_list.append(render_gt)
+    #render_gt = fastrender.render(
+    #    verts_gt,
+    #    faces,
+    #    input_res,
+    #    camsintr,
+    #    colors_gt,
+    #    fill_back=False,
+    #    bg_color=None,
+    #    )
+    #render_list.append(render_gt)
 
 
   # prd
@@ -275,7 +275,7 @@ def render(
     render_list += [render_prd]
 
     verts_rotated_prd = verts_prd
-    for i in range(3):
+    for i in range(2):
       verts_rotated_prd = visutils.rotate_verts(verts_rotated_prd)
       render_rotated_prd = fastrender.render(
         verts_rotated_prd,

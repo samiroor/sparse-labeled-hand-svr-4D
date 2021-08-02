@@ -15,25 +15,26 @@ parser.add_argument('--proposed_dir', default='pairdisentangleflow_obman_pairSup
 
 parser.add_argument('--baseline_ckpt', default='best_loss')
 parser.add_argument('--proposed_ckpt', default='best_mesh_predictor_u__xyz_mean3d')
+parser.add_argument('--batch_size', default=32, type=int)
 
 
 def get_methods_list(args):
 
-  refname = 'test_on_ckpt_{ckpt}_Setting__batch_size_32_workers_8_datasets__sampler_dataset__sampler_mode_{sampler_mode}_split_{split}_supervise_fraction_0.0078125_eval_{module}_on_{samples_mode}_samples'
+  refname = 'test_on_ckpt_{ckpt}_Setting__batch_size_{batch_size}_workers_8_datasets__sampler_dataset__sampler_mode_{sampler_mode}_split_{split}_supervise_fraction_0.0078125_eval_{module}_on_{samples_mode}_samples'
   exps_list = [
-      ['Baseline',                         args.baseline_dir, args.baseline_ckpt, 'mesh_predictor', 'test',  'all', 'all'],
-      ['Baseline + Alignment Supervision', args.proposed_dir, args.proposed_ckpt, 'mesh_predictor', 'test',  'all', 'all'],
-      ['Baseline',                         args.baseline_dir, args.baseline_ckpt, 'mesh_predictor', 'test',  'unsupervised',            'unsupervised'],
-      ['Baseline + Alignment Supervision', args.proposed_dir, args.proposed_ckpt, 'mesh_predictor', 'test',  'unsupervised',            'unsupervised'],
-      ['Annotation Propagtion',            args.proposed_dir, args.proposed_ckpt, 'flow_infer',     'test',  'unsupervised_supervised', 'unsupervised'],
-      ['Baseline',                         args.baseline_dir, args.baseline_ckpt, 'mesh_predictor', 'train', 'unsupervised',            'unsupervised'],
-      ['Baseline + Alignment Supervision', args.proposed_dir, args.proposed_ckpt, 'mesh_predictor', 'train', 'unsupervised',            'unsupervised'],
-      ['Annotation Propagtion',            args.proposed_dir, args.proposed_ckpt, 'flow_infer',     'train', 'unsupervised_supervised', 'unsupervised'],
+      ['Baseline',                         args.baseline_dir, args.baseline_ckpt, 'mesh_predictor', 'test',  'all', 'all', args.batch_size],
+      ['Baseline + Alignment Supervision', args.proposed_dir, args.proposed_ckpt, 'mesh_predictor', 'test',  'all', 'all', 32],
+      ['Baseline',                         args.baseline_dir, args.baseline_ckpt, 'mesh_predictor', 'test',  'unsupervised',            'unsupervised', args.batch_size],
+      ['Baseline + Alignment Supervision', args.proposed_dir, args.proposed_ckpt, 'mesh_predictor', 'test',  'unsupervised',            'unsupervised', 32],
+      ['Annotation Propagtion',            args.proposed_dir, args.proposed_ckpt, 'flow_infer',     'test',  'unsupervised_supervised', 'unsupervised', 32],
+      ['Baseline',                         args.baseline_dir, args.baseline_ckpt, 'mesh_predictor', 'train', 'unsupervised',            'unsupervised', args.batch_size],
+      ['Baseline + Alignment Supervision', args.proposed_dir, args.proposed_ckpt, 'mesh_predictor', 'train', 'unsupervised',            'unsupervised', 32],
+      ['Annotation Propagtion',            args.proposed_dir, args.proposed_ckpt, 'flow_infer',     'train', 'unsupervised_supervised', 'unsupervised', 32],
       ]
 
   methods_list = []
-  for name, _dir, ckpt, module, split, sampler_mode, samples_mode in exps_list:
-    exp_dir = os.path.join(args.exp_root, _dir, refname.format(ckpt=ckpt, split=split, module=module, sampler_mode=sampler_mode, samples_mode=samples_mode))
+  for name, _dir, ckpt, module, split, sampler_mode, samples_mode, batch_size in exps_list:
+    exp_dir = os.path.join(args.exp_root, _dir, refname.format(ckpt=ckpt, split=split, module=module, sampler_mode=sampler_mode, samples_mode=samples_mode, batch_size=batch_size))
     methods_list += [[name, exp_dir, f'split_{split}_{samples_mode}_frames']]
 
   return methods_list
@@ -44,7 +45,6 @@ if __name__ == "__main__":
   os.makedirs(args.output_dir, exist_ok=True)
 
   methods_list = get_methods_list(args)
-
   error_table.get_csv_file(
       methods_list=methods_list,
       save_file=os.path.join(args.output_dir, f'error_table_{args.exp_root}.csv'),

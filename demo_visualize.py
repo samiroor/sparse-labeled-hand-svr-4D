@@ -20,6 +20,7 @@ parser.add_argument('--proposed_dir', default='pairdisentangleflow_obman_pairSup
 
 parser.add_argument('--baseline_ckpt', default='best_loss')
 parser.add_argument('--proposed_ckpt', default='best_mesh_predictor_u__xyz_mean3d')
+parser.add_argument('--batch_size', default=32, type=int)
 
 
 if __name__ == "__main__":
